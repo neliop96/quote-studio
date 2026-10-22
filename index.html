@@ -116,8 +116,25 @@ $('lineRows').onclick=e=>{if(e.target.dataset.remove!==undefined){lines.splice(N
 ['markup','laborHours','laborRate','tax'].forEach(x=>$(x).oninput=renderLines);
 $('clearQuote').onclick=()=>{editQuote=null;lines=[];$('quoteNo').value='';$('quoteNotes').value='';$('quoteStatus').value='Draft';applyQuoteDefaults()};
 $('saveQuote').onclick=()=>safe(async()=>{const q=quoteDraft();if(!q.quote_number||!q.customer_id||!q.items.length)throw Error('Quote number, customer and at least one product required');if([q.markup,q.tax_rate,q.labor_hours,q.labor_rate].some(n=>!Number.isFinite(n)||n<0))throw Error('Invalid quote values');if(q.items.some(l=>!Number.isSafeInteger(l.qty)||l.qty<=0))throw Error('Invalid line quantity');if(editQuote){checked(await db.from('quotes').update({...q,updated_at:new Date().toISOString()}).eq('id',editQuote))}else{checked(await db.from('quotes').insert({...q,created_by:user.id}))}await refresh();notify('Quote saved to cloud')});
-function renderQuotes(){$('quoteRows').innerHTML=quotes.map(q=>`<tr><td>${esc(q.quote_number)}</td><td>${esc(q.customer_snapshot?.name)}</td><td>${esc(q.status)}</td><td>${esc(new Date(q.created_at).toLocaleDateString())}</td><td><button data-load-quote="${q.id}">Open</button></td></tr>`).join('')}
-$('quoteRows').onclick=e=>{const q=quotes.find(x=>x.id===e.target.dataset.loadQuote);if(!q)return;editQuote=q.id;lines=q.items||[];$('quoteNo').value=q.quote_number;$('quoteCustomer').value=q.customer_id||'';$('quoteStatus').value=q.status;$('markup').value=q.markup;$('laborHours').value=q.labor_hours;$('laborRate').value=q.labor_rate;$('tax').value=q.tax_rate;$('quoteNotes').value=q.notes;renderLines();scrollTo({top:0,behavior:'smooth'})};
+function renderQuotes(){
+ $('quoteRows').innerHTML=quotes.map(q=>`<tr><td>${esc(q.quote_number)}</td><td>${esc(q.customer_snapshot?.name)}</td><td>${esc(q.status)}</td><td>${esc(new Date(q.created_at).toLocaleDateString())}</td><td><button data-load-quote="${q.id}">Open</button>${profile?.role==='admin'?` <button class="danger" data-delete-quote="${q.id}">Delete</button>`:''}</td></tr>`).join('');
+}
+$('quoteRows').onclick=e=>safe(async()=>{
+ const deleteId=e.target.closest('[data-delete-quote]')?.dataset.deleteQuote;
+ if(deleteId){
+  if(profile?.role!=='admin')throw Error('Admin permission required');
+  const q=quotes.find(x=>x.id===deleteId);if(!q)return;
+  const answer=prompt(`Permanently delete quotation ${q.quote_number}? This cannot be undone.\n\nType the quotation number to confirm:`);
+  if(answer===null)return;
+  if(answer.trim()!==q.quote_number){notify('Deletion cancelled: quotation number did not match.',true);return}
+  checked(await db.rpc('admin_delete_quote',{p_quote:deleteId}));
+  if(editQuote===deleteId)$('clearQuote').click();
+  await refresh();notify(`Quotation ${q.quote_number} permanently deleted`);return;
+ }
+ const loadId=e.target.closest('[data-load-quote]')?.dataset.loadQuote;
+ const q=quotes.find(x=>x.id===loadId);if(!q)return;
+ editQuote=q.id;lines=q.items||[];$('quoteNo').value=q.quote_number;$('quoteCustomer').value=q.customer_id||'';$('quoteStatus').value=q.status;$('markup').value=q.markup;$('laborHours').value=q.labor_hours;$('laborRate').value=q.labor_rate;$('tax').value=q.tax_rate;$('quoteNotes').value=q.notes;renderLines();scrollTo({top:0,behavior:'smooth'});
+});
 $('printFormat').onchange=()=>{const customer=$('printFormat').value==='customer';$('customerPrintOptions').classList.toggle('hidden',!customer);$('projectNameField').classList.toggle('hidden',!customer)};
 $('printQuote').onclick=()=>{
  const q=quoteDraft(),t=totals(q),c=q.customer_snapshot||{};
