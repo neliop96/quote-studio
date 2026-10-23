@@ -103,6 +103,7 @@
         ["login", "forgotPanel", "mfaLogin", "passwordSetup", "app"].forEach((x) =>
           $(x).classList.toggle("hidden", x !== id),
         );
+        $("authBrand").classList.toggle("hidden", id === "app");
       }
       $("forgotPassword").onclick = () => {
         $("recoveryEmail").value = $("email").value.trim();

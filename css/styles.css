@@ -246,10 +246,24 @@
         text-align: right;
       }
       .brand {
-        color: #78b6ff;
-        letter-spacing: 2px;
-        font-size: 28px;
-        font-weight: 800;
+        display: flex;
+        justify-content: center;
+        margin-top: 28px;
+      }
+      .brand img {
+        display: block;
+        width: min(360px, 100%);
+        height: auto;
+      }
+      .app-brand {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .app-brand img {
+        display: block;
+        width: min(210px, 35vw);
+        height: auto;
       }
       .total {
         font-size: 24px;
@@ -300,6 +314,12 @@
         .grid,
         .two {
           grid-template-columns: 1fr;
+        }
+        .app-brand {
+          gap: 10px;
+        }
+        .app-brand img {
+          width: min(140px, 32vw);
         }
         .shell {
           padding: 12px;
