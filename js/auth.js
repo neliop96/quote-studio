@@ -80,8 +80,10 @@
         safe(async () => {
           const email = $("recoveryEmail").value.trim();
           if (!email) throw Error("Enter your email address");
+          const redirectTo = new URL("./", window.location.href);
+          redirectTo.searchParams.set("type", "recovery");
           const { error } = await db.auth.resetPasswordForEmail(email, {
-            redirectTo: new URL("./", window.location.href).href,
+            redirectTo: redirectTo.href,
           });
           if (error) throw error;
           notify(
@@ -253,6 +255,7 @@
           showPasswordSetup();
         }
       });
+      if (passwordSetupMode) showPasswordSetup();
       $("passwordSetupForm").onsubmit = (e) => {
         e.preventDefault();
         safe(async () => {
