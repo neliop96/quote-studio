@@ -105,8 +105,11 @@
             ><h2>Create quotation</h2
             ><div class="grid"
               ><div
-                ><label>Quote number (unique)</label
-                ><input id="quoteNo" placeholder="EST1026001" /></div
+                ><label>Estimate number (generated on save)</label
+                ><input id="quoteNo" placeholder="EST2610001" /></div
+              ><div
+                ><label>Project name</label
+                ><input id="quoteProjectName" maxlength="140" placeholder="Project title" /></div
               ><div
                 ><label>Customer</label
                 ><select id="quoteCustomer"></select></div
@@ -238,7 +241,7 @@
               ><table
                 ><thead
                   ><tr
-                    ><th>Number</th><th>Customer</th><th>Status</th><th>Date</th><th>Action</th></tr
+                    ><th>Number</th><th>Project</th><th>Customer</th><th>Status</th><th>Date</th><th>Action</th></tr
                   ></thead
                 ><tbody id="quoteRows"></tbody></table></div></div
         ></section>
@@ -247,10 +250,19 @@
             ><h2>Product database</h2
             ><div class="grid"
               ><div><label>Part number</label><input id="prodPart" /></div
-              ><div><label>Category</label><input id="prodCategory" /></div
-              ><div><label>Subcategory</label><input id="prodSub" /></div
+              ><div><label>Category</label><div class="suggestion-field"
+                ><input id="prodCategory" autocomplete="off" aria-controls="productCategories" aria-expanded="false" />
+                <button type="button" class="suggestion-toggle" aria-label="Show category suggestions" aria-expanded="false"><span></span></button>
+                <div id="productCategories" class="suggestion-menu hidden" role="listbox"></div></div></div
+              ><div><label>Subcategory</label><div class="suggestion-field"
+                ><input id="prodSub" autocomplete="off" aria-controls="productSubcategories" aria-expanded="false" />
+                <button type="button" class="suggestion-toggle" aria-label="Show subcategory suggestions" aria-expanded="false"><span></span></button>
+                <div id="productSubcategories" class="suggestion-menu hidden" role="listbox"></div></div></div
               ><div><label>Description</label><input id="prodDescription" /></div
-              ><div><label>Supplier</label><input id="prodSupplier" /></div
+              ><div><label>Supplier</label><div class="suggestion-field"
+                ><input id="prodSupplier" autocomplete="off" aria-controls="productSuppliers" aria-expanded="false" />
+                <button type="button" class="suggestion-toggle" aria-label="Show supplier suggestions" aria-expanded="false"><span></span></button>
+                <div id="productSuppliers" class="suggestion-menu hidden" role="listbox"></div></div></div
               ><div
                 ><label>Purchase price</label
                 ><input id="prodPrice" type="number" min="0" step=".01" /></div></div
@@ -397,6 +409,22 @@
             ><div class="actions"
               ><button id="saveDefaults" class="primary">Save defaults (admin)</button></div
             ><small id="settingsHelp" class="muted"></small></div
+          ><div class="panel"
+            ><h2>Estimate numbering</h2
+            ><p class="muted"
+              >New estimate numbers are generated in Supabase when saved. They use the prefix,
+              current year and month (YYMM), followed by a serial that continues across all
+              estimates. The serial continues from matching saved quotations.</p
+            ><div class="grid"
+              ><div
+                ><label for="estimatePrefix">Prefix</label
+                ><input id="estimatePrefix" maxlength="12" value="EST" /></div
+              ><div
+                ><label for="estimateSerialWidth">Serial number digits</label
+                ><input id="estimateSerialWidth" type="number" min="1" max="8" step="1" value="3" /></div></div
+            ><div class="actions"
+              ><button id="saveEstimateNumberSettings" class="primary">Save estimate numbering (admin)</button></div
+            ><small id="estimateNumberHelp" class="muted"></small></div
           ><div class="panel"
             ><h2>Account security — Two-factor authentication</h2
             ><p class="muted"

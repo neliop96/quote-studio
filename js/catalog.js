@@ -7,6 +7,75 @@
           arr.map((x) => `<option value="${esc(x.value)}">${esc(x.label)}</option>`).join("");
         if (arr.some((x) => String(x.value) === previous)) $(id).value = previous;
       }
+      function productSuggestions(id, values) {
+        const menu = $(id);
+        const input = menu.parentElement.querySelector("input");
+        input.suggestionValues = [
+          ...new Set(values.filter((value) => typeof value === "string" && value.trim())),
+        ].sort((a, b) => a.localeCompare(b));
+        if (input.dataset.suggestionsReady) return;
+        input.dataset.suggestionsReady = "true";
+
+        const toggle = menu.parentElement.querySelector(".suggestion-toggle");
+        const close = () => {
+          menu.classList.add("hidden");
+          input.setAttribute("aria-expanded", "false");
+          toggle.setAttribute("aria-expanded", "false");
+        };
+        const show = () => {
+          const query = input.value.trim().toLocaleLowerCase();
+          const matches = input.suggestionValues.filter((value) =>
+            value.toLocaleLowerCase().includes(query),
+          );
+          menu.innerHTML = matches
+            .map(
+              (value) =>
+                `<button type="button" class="suggestion-option" role="option" data-suggestion="${esc(value)}">${esc(value)}</button>`,
+            )
+            .join("");
+          menu.classList.toggle("hidden", matches.length === 0);
+          input.setAttribute("aria-expanded", String(matches.length > 0));
+          toggle.setAttribute("aria-expanded", String(matches.length > 0));
+        };
+        input.addEventListener("focus", show);
+        input.addEventListener("input", show);
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            if (menu.classList.contains("hidden")) show();
+            menu.querySelector(".suggestion-option")?.focus();
+          } else if (event.key === "Escape") close();
+        });
+        toggle.addEventListener("click", () => {
+          if (menu.classList.contains("hidden")) {
+            input.focus();
+            show();
+          } else close();
+        });
+        menu.addEventListener("click", (event) => {
+          const option = event.target.closest(".suggestion-option");
+          if (!option) return;
+          input.value = option.dataset.suggestion;
+          input.focus();
+          close();
+        });
+        menu.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            close();
+            input.focus();
+          } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            const options = [...menu.querySelectorAll(".suggestion-option")];
+            const index = options.indexOf(document.activeElement);
+            const next = event.key === "ArrowDown" ? index + 1 : index - 1;
+            if (options[next]) options[next].focus();
+            else if (event.key === "ArrowUp") input.focus();
+          }
+        });
+        document.addEventListener("click", (event) => {
+          if (!menu.parentElement.contains(event.target)) close();
+        });
+      }
       function renderAll() {
         renderProducts();
         renderCustomers();
@@ -21,6 +90,9 @@
       }
       function renderProducts() {
         const t = $("productSearch").value.toLowerCase();
+        productSuggestions("productCategories", products.map((p) => p.category));
+        productSuggestions("productSubcategories", products.map((p) => p.subcategory));
+        productSuggestions("productSuppliers", products.map((p) => p.supplier));
         $("productRows").innerHTML = products
           .filter((p) => (p.part + p.description + p.category).toLowerCase().includes(t))
           .map(

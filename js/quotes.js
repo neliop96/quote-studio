@@ -8,6 +8,7 @@
       function quoteDraft() {
         return {
           quote_number: $("quoteNo").value.trim(),
+          project_name: $("quoteProjectName").value.trim(),
           customer_id: $("quoteCustomer").value || null,
           customer_snapshot: customers.find((c) => c.id === $("quoteCustomer").value) || {},
           items: lines,
@@ -59,6 +60,7 @@
         editQuote = null;
         lines = [];
         $("quoteNo").value = "";
+        $("quoteProjectName").value = "";
         $("quoteNotes").value = "";
         $("quoteStatus").value = "Draft";
         applyQuoteDefaults();
@@ -66,8 +68,8 @@
       $("saveQuote").onclick = () =>
         safe(async () => {
           const q = quoteDraft();
-          if (!q.quote_number || !q.customer_id || !q.items.length)
-            throw Error("Quote number, customer and at least one product required");
+          if ((editQuote && !q.quote_number) || !q.customer_id || !q.items.length)
+            throw Error("Estimate number, customer and at least one product required");
           if (
             [q.markup, q.tax_rate, q.labor_hours, q.labor_rate].some(
               (n) => !Number.isFinite(n) || n < 0,
@@ -76,6 +78,11 @@
             throw Error("Invalid quote values");
           if (q.items.some((l) => !Number.isSafeInteger(l.qty) || l.qty <= 0))
             throw Error("Invalid line quantity");
+          if (!editQuote && !q.quote_number) {
+            q.quote_number = checked(await db.rpc("generate_estimate_number"));
+            if (!q.quote_number) throw Error("Supabase did not return an estimate number");
+            $("quoteNo").value = q.quote_number;
+          }
           if (editQuote) {
             checked(
               await db
@@ -93,7 +100,7 @@
         $("quoteRows").innerHTML = quotes
           .map(
             (q) =>
-              `<tr><td>${esc(q.quote_number)}</td><td>${esc(q.customer_snapshot?.name)}</td><td>${esc(q.status)}</td><td>${esc(new Date(q.created_at).toLocaleDateString())}</td><td><button data-load-quote="${q.id}">Open</button> <button data-email-quote="${q.id}">Send Email</button>${profile?.role === "admin" ? ` <button class="danger" data-delete-quote="${q.id}">Delete</button>` : ""}</td></tr>`,
+              `<tr><td>${esc(q.quote_number)}</td><td>${esc(q.project_name)}</td><td>${esc(q.customer_snapshot?.name)}</td><td>${esc(q.status)}</td><td>${esc(new Date(q.created_at).toLocaleDateString())}</td><td><button data-load-quote="${q.id}">Open</button> <button data-email-quote="${q.id}">Send Email</button>${profile?.role === "admin" ? ` <button class="danger" data-delete-quote="${q.id}">Delete</button>` : ""}</td></tr>`,
           )
           .join("");
       }
@@ -129,6 +136,7 @@
           editQuote = q.id;
           lines = q.items || [];
           $("quoteNo").value = q.quote_number;
+          $("quoteProjectName").value = q.project_name || "";
           $("quoteCustomer").value = q.customer_id || "";
           $("quoteStatus").value = q.status;
           $("markup").value = q.markup;
@@ -149,7 +157,7 @@
         $("sendQuoteNumber").value = q.quote_number;
         $("sendQuoteTo").value = email;
         $("sendQuoteProject").value =
-          String(q.notes || "")
+          String(q.project_name || q.notes || "")
             .trim()
             .split("\n")[0]
             .slice(0, 140) || "Automation Project";
@@ -216,10 +224,11 @@
         const customer = $("printFormat").value === "customer";
         const projectName =
           $("printProjectName").value.trim() ||
+          q.project_name ||
           q.notes.trim().split("\n")[0].slice(0, 100) ||
           "Automation Project";
         const title = customer ? "Project Quotation" : "Estimate";
-        const head = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(q.quote_number || title)}</title><style>body{font:14px Arial,sans-serif;margin:40px;color:#182336;line-height:1.5}h1{color:#164e93;margin-bottom:5px}h2{margin-top:10px}table{width:100%;border-collapse:collapse;margin:20px 0}td,th{padding:9px;border-bottom:1px solid #ccc;text-align:left}.total{text-align:right;font-size:24px;margin-top:24px}.muted{color:#53657b}.project{padding:16px 0;border-top:1px solid #dce3eb;border-bottom:1px solid #dce3eb;margin:24px 0;font-size:19px;font-weight:bold}p{white-space:pre-wrap}</style></head><body><h1>PRECISION AUTOMATION</h1><h2>${title} ${esc(q.quote_number)}</h2><p><b>Customer:</b> ${esc(c.name)}<br>${esc(c.contact)}<br>${esc(c.address)}<br>${esc(c.email)}</p>`;
+        const head = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(q.quote_number || title)}</title><style>body{font:14px Arial,sans-serif;margin:40px;color:#182336;line-height:1.5}h1{color:#164e93;margin-bottom:5px}h2{margin-top:10px}table{width:100%;border-collapse:collapse;margin:20px 0}td,th{padding:9px;border-bottom:1px solid #ccc;text-align:left}.total{text-align:right;font-size:24px;margin-top:24px}.muted{color:#53657b}.project{padding:16px 0;border-top:1px solid #dce3eb;border-bottom:1px solid #dce3eb;margin:24px 0;font-size:19px;font-weight:bold}p{white-space:pre-wrap}</style></head><body><h1>PRECISION AUTOMATION</h1><h2>${title} ${esc(q.quote_number)}</h2>${!customer && q.project_name ? `<p><b>Project:</b> ${esc(q.project_name)}</p>` : ""}<p><b>Customer:</b> ${esc(c.name)}<br>${esc(c.contact)}<br>${esc(c.address)}<br>${esc(c.email)}</p>`;
         let content;
         if (customer) {
           const materials = $("customerPrintDetail").value === "materials";

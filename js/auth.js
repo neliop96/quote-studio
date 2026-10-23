@@ -63,6 +63,40 @@
           notify("Quotation defaults saved. They will be used for new quotations.");
           $("settingsHelp").textContent = "Saved to Supabase.";
         });
+      async function loadEstimateNumberSettings() {
+        const { data, error } = await db.rpc("get_estimate_number_settings");
+        if (error) {
+          $("estimateNumberHelp").textContent =
+            "Estimate numbering unavailable: apply the estimate-numbering migration in Supabase.";
+          notify("Estimate numbering settings could not load: " + error.message, true);
+          return;
+        }
+        $("estimatePrefix").value = data.prefix;
+        $("estimateSerialWidth").value = data.serial_width;
+        $("estimateNumberHelp").textContent =
+          `Next serial: ${data.next_serial}. Existing saved quotations were checked when numbering was initialized.`;
+      }
+      $("saveEstimateNumberSettings").onclick = () =>
+        safe(async () => {
+          if (profile?.role !== "admin")
+            throw Error("Admin required to change estimate numbering");
+          const prefix = $("estimatePrefix").value.trim().toUpperCase();
+          const serialWidth = Number($("estimateSerialWidth").value);
+          if (!/^[A-Z][A-Z0-9]{0,11}$/.test(prefix))
+            throw Error("Prefix must start with a letter and contain only letters and numbers");
+          if (!Number.isSafeInteger(serialWidth) || serialWidth < 1 || serialWidth > 8)
+            throw Error("Serial number digits must be between 1 and 8");
+          const { data, error } = await db.rpc("save_estimate_number_settings", {
+            p_prefix: prefix,
+            p_serial_width: serialWidth,
+          });
+          if (error) throw error;
+          $("estimatePrefix").value = data.prefix;
+          $("estimateSerialWidth").value = data.serial_width;
+          $("estimateNumberHelp").textContent =
+            `Saved in Supabase. The serial continues globally; the next serial is ${data.next_serial}.`;
+          notify("Estimate numbering settings saved");
+        });
       let pendingMfaFactor = null,
         pendingEnrollFactor = null;
       function showOnlyAuth(id) {
@@ -242,8 +276,12 @@
           .classList.toggle("hidden", profile.role !== "admin");
         $("saveProduct").disabled = profile.role !== "admin";
         $("saveDefaults").disabled = profile.role !== "admin";
+        $("saveEstimateNumberSettings").disabled = profile.role !== "admin";
+        $("estimatePrefix").disabled = profile.role !== "admin";
+        $("estimateSerialWidth").disabled = profile.role !== "admin";
         await refresh();
         await loadQuoteDefaults();
+        await loadEstimateNumberSettings();
         await updateMfaStatus();
       }
       // A recovery/invite link authenticates a temporary session; do not show the app until the password is set.
