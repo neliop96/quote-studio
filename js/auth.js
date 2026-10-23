@@ -282,6 +282,8 @@
         await refresh();
         await loadQuoteDefaults();
         await loadEstimateNumberSettings();
+        await loadShiftAlertSettings();
+        await loadShiftAlerts();
         await updateMfaStatus();
       }
       // A recovery/invite link authenticates a temporary session; do not show the app until the password is set.

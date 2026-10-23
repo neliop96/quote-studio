@@ -91,7 +91,15 @@
             flex-wrap: wrap;
           "
           ><div><h1>Quote Studio Cloud</h1><small id="identity"></small></div
-          ><button id="signOut">Sign out</button></header
+          ><div class="header-actions"
+            ><div class="shift-alert-container"
+              ><button id="shiftAlertBell" type="button" aria-label="Handoff alerts" aria-controls="shiftAlertPanel" aria-expanded="false"
+                >🔔 Alerts <span id="shiftAlertCount" class="hidden"></span></button
+              ><div id="shiftAlertPanel" class="shift-alert-panel hidden" aria-live="polite"
+                ><h2>Unread handoff alerts</h2
+                ><div id="shiftAlertList"></div></div
+            ></div
+            ><button id="signOut">Sign out</button></div></header
         >
         <nav class="tabs"
           ><button data-tab="quotes" class="active">Quotations</button
@@ -300,7 +308,12 @@
                 ><input id="shiftReportDate" type="date" /></div
               ><div
                 ><label for="shiftReportShift">Shift</label
-                ><input id="shiftReportShift" maxlength="60" placeholder="e.g. Day shift" /></div></div
+                ><select id="shiftReportShift"
+                  ><option value="">Select shift</option
+                  ><option>1st Shift</option
+                  ><option>2nd Shift</option
+                  ><option>3rd Shift</option></select
+                ></div></div
             ><div class="panel" style="margin-top: 14px; background: #17263a"
               ><h3 style="margin-top: 0">Add task</h3
               ><div class="grid"
@@ -309,7 +322,8 @@
                       ><input id="shiftTaskTitle" maxlength="160" placeholder="e.g. Replace conveyor motor" /></div
                 ><div
                       ><label for="shiftTaskNotes">Handoff notes for next shift</label
-                      ><textarea id="shiftTaskNotes" rows="2" maxlength="2000"></textarea></div></div
+                      ><textarea id="shiftTaskNotes" rows="2" maxlength="2000"></textarea
+                      ><small class="muted">A note becomes an alert for selected roles when the report is submitted.</small></div></div
               ><div class="grid" style="margin-top: 12px"
                 ><div
                       ><label for="shiftTaskProduct">Product used</label
@@ -528,6 +542,14 @@
             ><div class="actions"
               ><button id="saveEstimateNumberSettings" class="primary">Save estimate numbering (admin)</button></div
             ><small id="estimateNumberHelp" class="muted"></small></div
+          ><div class="panel"
+            ><h2>Shift handoff alerts</h2
+            ><p class="muted"
+              >Choose which employee roles receive an alert when a shift report is submitted with handoff notes. Each recipient marks alerts read individually.</p
+            ><div id="shiftAlertRoleOptions" class="grid"></div
+            ><div class="actions"
+              ><button id="saveShiftAlertSettings" class="primary">Save alert recipients (admin)</button></div
+            ><small id="shiftAlertSettingsHelp" class="muted"></small></div
           ><div class="panel"
             ><h2>Account security — Two-factor authentication</h2
             ><p class="muted"

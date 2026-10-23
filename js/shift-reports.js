@@ -3,6 +3,8 @@
       let shiftTaskItems = [];
       let editingShiftReportId = null;
       let editingShiftReportStatus = null;
+      let unreadShiftAlerts = [];
+      let shiftAlertRoles = [];
 
       const localDate = (date = new Date()) =>
         `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -264,7 +266,9 @@
           checked(await db.rpc("submit_shift_report", { p_report: editingShiftReportId }));
           editingShiftReportStatus = "submitted";
           $("shiftReportMonth").value = report.report_date.slice(0, 7);
+          await refresh();
           await loadShiftReports();
+          await loadShiftAlerts();
           notify("Shift report submitted and inventory deducted");
           resetShiftReport();
           $("shiftReportDate").value = report.report_date;
@@ -352,3 +356,118 @@
           await loadShiftReports();
         }),
       );
+
+      function formatRoleName(role) {
+        return role
+          .replace(/[_-]+/g, " ")
+          .replace(/\b\w/g, (character) => character.toUpperCase());
+      }
+
+      function renderShiftAlertRoles(selectedRoles = []) {
+        const selected = new Set(selectedRoles);
+        const isAdmin = profile?.role === "admin";
+        $("shiftAlertRoleOptions").innerHTML =
+          shiftAlertRoles
+            .map(
+              (role) =>
+                `<label class="shift-alert-role"><input type="checkbox" value="${esc(role)}" ${selected.has(role) ? "checked" : ""} ${isAdmin ? "" : "disabled"} />${esc(formatRoleName(role))}</label>`,
+            )
+            .join("") || '<p class="muted">No employee roles are available yet.</p>';
+        $("saveShiftAlertSettings").disabled = !isAdmin;
+      }
+
+      async function loadShiftAlertSettings() {
+        const { data, error } = await db.rpc("get_shift_alert_settings");
+        if (error) {
+          $("shiftAlertSettingsHelp").textContent =
+            "Handoff alerts unavailable: apply the handoff-alert migration in Supabase.";
+          notify("Handoff alert settings could not load: " + error.message, true);
+          return;
+        }
+        shiftAlertRoles = Array.isArray(data?.available_roles) ? data.available_roles : [];
+        const selectedRoles = Array.isArray(data?.recipient_roles) ? data.recipient_roles : [];
+        renderShiftAlertRoles(selectedRoles);
+        $("shiftAlertSettingsHelp").textContent =
+          !selectedRoles.length && profile?.role === "admin"
+            ? "No roles are selected. Choose recipients before submitting any report with handoff notes."
+            : profile?.role === "admin"
+              ? "Recipients are based on roles currently assigned to employee profiles."
+              : "Only an administrator can choose alert recipients.";
+      }
+
+      $("saveShiftAlertSettings").onclick = () =>
+        safe(async () => {
+          if (profile?.role !== "admin") throw Error("Admin required to change alert recipients");
+          const roles = [
+            ...$("shiftAlertRoleOptions").querySelectorAll('input[type="checkbox"]:checked'),
+          ].map((checkbox) => checkbox.value);
+          const { data, error } = await db.rpc("save_shift_alert_settings", {
+            p_roles: roles,
+          });
+          if (error) throw error;
+          renderShiftAlertRoles(data.recipient_roles || []);
+          $("shiftAlertSettingsHelp").textContent =
+            roles.length
+              ? `Saved. New handoff alerts will go to: ${roles.map(formatRoleName).join(", ")}.`
+              : "Saved. No roles are selected; reports with handoff notes cannot be submitted until recipients are chosen.";
+          notify("Shift handoff alert recipients saved");
+        });
+
+      function renderShiftAlerts() {
+        const count = unreadShiftAlerts.length;
+        $("shiftAlertCount").textContent = count > 99 ? "99+" : String(count);
+        $("shiftAlertCount").classList.toggle("hidden", count === 0);
+        $("shiftAlertBell").setAttribute("aria-label", `${count} unread handoff alerts`);
+        $("shiftAlertList").innerHTML =
+          unreadShiftAlerts
+            .map(
+              (alert) =>
+                `<article class="shift-alert"><strong>${esc(alert.shift_name)} — ${esc(alert.task_title)}</strong><small class="muted">${esc(alert.report_date)}</small><p>${esc(alert.handoff_note)}</p><button data-read-shift-alert="${esc(alert.id)}">Mark as read</button></article>`,
+            )
+            .join("") || '<p class="muted">You have no unread handoff alerts.</p>';
+      }
+
+      async function loadShiftAlerts() {
+        const { data, error } = await db.rpc("get_my_shift_alerts");
+        if (error) {
+          notify("Handoff alerts could not load: " + error.message, true);
+          return;
+        }
+        unreadShiftAlerts = Array.isArray(data) ? data : [];
+        renderShiftAlerts();
+      }
+
+      $("shiftAlertBell").onclick = () =>
+        safe(async () => {
+          const panel = $("shiftAlertPanel");
+          const open = panel.classList.contains("hidden");
+          panel.classList.toggle("hidden", !open);
+          $("shiftAlertBell").setAttribute("aria-expanded", String(open));
+          if (open) await loadShiftAlerts();
+        });
+      $("shiftAlertList").onclick = (event) =>
+        safe(async () => {
+          const id = event.target.closest("[data-read-shift-alert]")?.dataset.readShiftAlert;
+          if (!id) return;
+          checked(await db.rpc("mark_shift_alert_read", { p_alert: id }));
+          await loadShiftAlerts();
+          notify("Handoff alert marked as read");
+        });
+      document.addEventListener("click", (event) => {
+        const container = $("shiftAlertBell").parentElement;
+        if (!container.contains(event.target)) {
+          $("shiftAlertPanel").classList.add("hidden");
+          $("shiftAlertBell").setAttribute("aria-expanded", "false");
+        }
+      });
+      window.addEventListener("focus", () =>
+        safe(async () => {
+          if (user) await loadShiftAlerts();
+        }),
+      );
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && user)
+          safe(async () => {
+            await loadShiftAlerts();
+          });
+      });
