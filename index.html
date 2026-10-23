@@ -95,6 +95,7 @@
         >
         <nav class="tabs"
           ><button data-tab="quotes" class="active">Quotations</button
+          ><button data-tab="projects">Projects</button
           ><button data-tab="products">Products</button
           ><button data-tab="customers">Customers</button
           ><button data-tab="inventory">Inventory</button><button data-tab="team">Team</button
@@ -197,6 +198,7 @@
               ><div class="total" id="quoteTotal">$0.00</div
               ><div
                 ><button id="printQuote">Print / PDF</button>
+                <button id="saveAsProject">Save as project</button>
                 <button class="primary" id="saveQuote">Save quotation</button>
                 <button id="clearQuote">New</button></div
               ></div
@@ -244,6 +246,46 @@
                     ><th>Number</th><th>Project</th><th>Customer</th><th>Status</th><th>Date</th><th>Action</th></tr
                   ></thead
                 ><tbody id="quoteRows"></tbody></table></div></div
+        ></section>
+        <section id="projects" class="hidden"
+                ><div class="panel"
+                  ><h2>Create project template</h2
+                  ><p class="muted"
+                    >Build a reusable project from products, or save the products in a quotation as a project.</p
+                  ><div class="grid"
+                    ><div
+                      ><label for="projectName">Project name</label
+                      ><input id="projectName" maxlength="140" placeholder="e.g. Soaker 16 stations" /></div
+                    ><div
+                      ><label for="projectCategory">Category</label
+                      ><select id="projectCategory"></select></div
+                    ><div
+                      ><label for="projectSubcategory">Subcategory</label
+                      ><select id="projectSubcategory"></select></div
+                    ><div
+                      ><label for="projectProduct">Product</label
+                      ><select id="projectProduct"></select></div></div
+                  ><div class="actions"
+                    ><input id="projectProductQty" type="number" min="1" step="1" value="1" style="max-width: 95px" />
+                    <button id="addProjectProduct">Add product</button></div
+                  ><div class="scroll"
+                    ><table
+                      ><thead
+                        ><tr><th>Part</th><th>Description</th><th>Quantity</th><th></th></tr></thead
+                      ><tbody id="projectDraftRows"></tbody></table></div
+                  ><div class="actions"
+                    ><button id="saveProject" class="primary">Save project</button
+                    ><button id="clearProjectDraft">Clear</button></div
+                  ></div
+                ><div class="panel"
+                  ><h2>Shared projects</h2
+                  ><p class="muted"
+                    >Use a project to start a new quotation. Current product database prices will be used; remove any products you do not need before saving.</p
+                  ><div class="scroll"
+                    ><table
+                      ><thead
+                        ><tr><th>Project</th><th>Products</th><th>Created</th><th>Action</th></tr></thead
+                      ><tbody id="projectsRows"></tbody></table></div></div
         ></section>
         <section id="products" class="hidden"
           ><div class="panel"
@@ -497,6 +539,7 @@
     <script defer src="./js/core.js"></script>
     <script defer src="./js/auth.js"></script>
     <script defer src="./js/catalog.js"></script>
+    <script defer src="./js/projects.js"></script>
     <script defer src="./js/quotes.js"></script>
     <script defer src="./js/inventory.js"></script></body
   ></html

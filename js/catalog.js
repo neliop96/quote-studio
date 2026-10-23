@@ -80,6 +80,7 @@
         renderProducts();
         renderCustomers();
         renderQuotes();
+        renderProjects();
         renderInventory();
         $("teamRows").innerHTML = team
           .map(

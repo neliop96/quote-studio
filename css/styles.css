@@ -167,6 +167,10 @@
       td button {
         padding: 5px 9px;
       }
+      .project-items {
+        margin: 0;
+        padding-left: 18px;
+      }
       .stat {
         font-size: 24px;
         font-weight: 700;

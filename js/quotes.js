@@ -65,6 +65,12 @@
         $("quoteStatus").value = "Draft";
         applyQuoteDefaults();
       };
+      $("saveAsProject").onclick = () =>
+        safe(async () => {
+          await saveProjectTemplate($("quoteProjectName").value, lines);
+          await refresh();
+          notify("Quotation items saved as a shared project");
+        });
       $("saveQuote").onclick = () =>
         safe(async () => {
           const q = quoteDraft();

@@ -33,6 +33,7 @@
         products = [],
         customers = [],
         quotes = [],
+        projects = [],
         inventory = [],
         movements = [],
         movementActors = {},
@@ -61,10 +62,11 @@
         }
       };
       async function refresh() {
-        [products, customers, quotes, inventory, movements] = await Promise.all([
+        [products, customers, quotes, projects, inventory, movements] = await Promise.all([
           db.from("products").select("*").eq("active", true).order("part").then(checked),
           db.from("customers").select("*").order("name").then(checked),
           db.from("quotes").select("*").order("created_at", { ascending: false }).then(checked),
+          db.from("projects").select("*").order("name").then(checked),
           db.from("inventory").select("*").then(checked),
           db
             .from("stock_movements")
