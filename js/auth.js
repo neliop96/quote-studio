@@ -256,6 +256,40 @@
         }
       });
       if (passwordSetupMode) showPasswordSetup();
+      async function getRecoverySession() {
+        let {
+          data: { session },
+        } = await db.auth.getSession();
+        if (session) return session;
+
+        const callbackUrl = new URL(window.location.href);
+        const code = callbackUrl.searchParams.get("code");
+        if (code) {
+          const result = await db.auth.exchangeCodeForSession(code);
+          if (result.error) throw result.error;
+          session = result.data.session;
+        } else {
+          const fragment = new URLSearchParams(callbackUrl.hash.slice(1));
+          const accessToken = fragment.get("access_token");
+          const refreshToken = fragment.get("refresh_token");
+          if (accessToken && refreshToken) {
+            const result = await db.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            if (result.error) throw result.error;
+            session = result.data.session;
+          } else {
+            const tokenHash =
+              callbackUrl.searchParams.get("token_hash") || fragment.get("token_hash");
+            if (!tokenHash) return null;
+            const result = await db.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" });
+            if (result.error) throw result.error;
+            session = result.data.session;
+          }
+        }
+        return session;
+      }
       $("passwordSetupForm").onsubmit = (e) => {
         e.preventDefault();
         safe(async () => {
@@ -263,12 +297,10 @@
             confirmation = $("confirmPassword").value;
           if (pass.length < 8) throw Error("Use a password with at least 8 characters");
           if (pass !== confirmation) throw Error("The passwords do not match");
-          const {
-            data: { session },
-          } = await db.auth.getSession();
+          const session = await getRecoverySession();
           if (!session)
             throw Error(
-              "Your link has expired or is invalid. Request a new password recovery link.",
+              "This page did not receive valid recovery credentials. Request a new reset link and open it in the same browser. If the issue continues, ask your administrator to check Supabase's email template and redirect URL settings.",
             );
           const { error } = await db.auth.updateUser({ password: pass });
           if (error) throw error;
