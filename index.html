@@ -95,6 +95,7 @@
         >
         <nav class="tabs"
           ><button data-tab="quotes" class="active">Quotations</button
+          ><button data-tab="shiftReports">Shift Reports</button
           ><button data-tab="projects">Projects</button
           ><button data-tab="products">Products</button
           ><button data-tab="customers">Customers</button
@@ -252,10 +253,11 @@
                   ><h2>Create project template</h2
                   ><p class="muted"
                     >Build a reusable project from products, or save the products in a quotation as a project.</p
-                  ><div class="grid"
+                  ><div class="project-name-field"
                     ><div
                       ><label for="projectName">Project name</label
-                      ><input id="projectName" maxlength="140" placeholder="e.g. Soaker 16 stations" /></div
+                      ><input id="projectName" maxlength="140" placeholder="e.g. Soaker 16 stations" /></div></div
+                  ><div class="grid project-product-grid"
                     ><div
                       ><label for="projectCategory">Category</label
                       ><select id="projectCategory"></select></div
@@ -286,6 +288,65 @@
                       ><thead
                         ><tr><th>Project</th><th>Products</th><th>Created</th><th>Action</th></tr></thead
                       ><tbody id="projectsRows"></tbody></table></div></div
+        ></section>
+        <section id="shiftReports" class="hidden"
+          ><div class="panel"
+            ><h2>Create shift report</h2
+            ><p class="muted"
+              >List each task and the products used. Inventory is deducted only when you submit the report.</p
+            ><div class="grid"
+              ><div
+                ><label for="shiftReportDate">Report date</label
+                ><input id="shiftReportDate" type="date" /></div
+              ><div
+                ><label for="shiftReportShift">Shift</label
+                ><input id="shiftReportShift" maxlength="60" placeholder="e.g. Day shift" /></div></div
+            ><div class="panel" style="margin-top: 14px; background: #17263a"
+              ><h3 style="margin-top: 0">Add task</h3
+              ><div class="grid"
+                ><div
+                      ><label for="shiftTaskTitle">Task / work order</label
+                      ><input id="shiftTaskTitle" maxlength="160" placeholder="e.g. Replace conveyor motor" /></div
+                ><div
+                      ><label for="shiftTaskNotes">Handoff notes for next shift</label
+                      ><textarea id="shiftTaskNotes" rows="2" maxlength="2000"></textarea></div></div
+              ><div class="grid" style="margin-top: 12px"
+                ><div
+                      ><label for="shiftTaskProduct">Product used</label
+                      ><select id="shiftTaskProduct"></select></div
+                ><div
+                      ><label for="shiftTaskQty">Quantity used</label
+                      ><input id="shiftTaskQty" type="number" min="1" step="1" value="1" /></div></div
+              ><div class="actions"
+                ><button id="addShiftTaskProduct">Add product to task</button
+                ><button id="addShiftTask" class="primary">Add task to report</button></div
+              ><div id="shiftTaskItems" class="muted"></div></div
+            ><div class="scroll"
+              ><table
+                ><thead
+                      ><tr><th>Task</th><th>Handoff notes</th><th>Products to issue</th><th></th></tr></thead
+                ><tbody id="shiftReportTaskRows"></tbody></table></div
+            ><div class="actions"
+              ><button id="saveShiftDraft">Save draft</button
+              ><button id="submitShiftReport" class="primary">Submit report and deduct inventory</button
+              ><button id="newShiftReport">New report</button></div
+            ><small id="shiftReportStatus" class="muted" aria-live="polite"></small></div
+          ><div class="panel"
+            ><h2>Saved shift reports</h2
+            ><div class="inventory-controls"
+              ><div
+                ><label for="shiftReportMonth">Report month</label
+                ><input id="shiftReportMonth" type="month" /></div
+              ><div
+                ><button id="exportShiftReports">Export month as CSV</button></div></div
+            ><div class="scroll"
+              ><table
+                ><thead
+                      ><tr><th>Date</th><th>Shift</th><th>Tasks</th><th>Status</th><th>Submitted</th><th>By</th><th>Action</th></tr></thead
+                ><tbody id="savedShiftReportRows"></tbody></table></div
+            ><small class="muted"
+              >Reports stay in Supabase and are not automatically deleted. Export each month as a CSV for an additional archive. Submitted reports are read-only; create a new report for follow-up work.</small
+            ></div
         ></section>
         <section id="products" class="hidden"
           ><div class="panel"
@@ -541,6 +602,7 @@
     <script defer src="./js/catalog.js"></script>
     <script defer src="./js/projects.js"></script>
     <script defer src="./js/quotes.js"></script>
+    <script defer src="./js/shift-reports.js"></script>
     <script defer src="./js/inventory.js"></script></body
   ></html
 >

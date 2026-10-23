@@ -373,7 +373,7 @@
             document
               .querySelectorAll("[data-tab]")
               .forEach((x) => x.classList.toggle("active", x === b));
-            ["quotes", "projects", "products", "customers", "inventory", "team", "settings"].forEach((x) =>
+            ["quotes", "shiftReports", "projects", "products", "customers", "inventory", "team", "settings"].forEach((x) =>
               $(x).classList.toggle("hidden", x !== b.dataset.tab),
             );
           }),
