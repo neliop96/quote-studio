@@ -5,13 +5,23 @@
           tax = (sell * Number(q.tax_rate)) / 100;
         return { material, sell, labor, tax, total: sell + labor + tax };
       }
+      function quoteItemSnapshots() {
+        return lines.map((line) => ({
+          product_id: line.product_id,
+          part: line.part,
+          description: line.description,
+          supplier: line.supplier,
+          qty: Number(line.qty),
+          cost: Number(line.cost),
+        }));
+      }
       function quoteDraft() {
         return {
           quote_number: $("quoteNo").value.trim(),
           project_name: $("quoteProjectName").value.trim(),
           customer_id: $("quoteCustomer").value || null,
           customer_snapshot: customers.find((c) => c.id === $("quoteCustomer").value) || {},
-          items: lines,
+          items: quoteItemSnapshots(),
           labor_hours: Number($("laborHours").value),
           labor_rate: Number($("laborRate").value),
           markup: Number($("markup").value),
@@ -82,8 +92,16 @@
             )
           )
             throw Error("Invalid quote values");
-          if (q.items.some((l) => !Number.isSafeInteger(l.qty) || l.qty <= 0))
-            throw Error("Invalid line quantity");
+          if (
+            q.items.some(
+              (l) =>
+                !Number.isSafeInteger(l.qty) ||
+                l.qty <= 0 ||
+                !Number.isFinite(l.cost) ||
+                l.cost < 0,
+            )
+          )
+            throw Error("Invalid line quantity or saved unit cost");
           if (!editQuote && !q.quote_number) {
             q.quote_number = checked(await db.rpc("generate_estimate_number"));
             if (!q.quote_number) throw Error("Supabase did not return an estimate number");
