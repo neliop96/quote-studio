@@ -4,6 +4,11 @@
         return "ok";
       }
       function renderInventory() {
+        const canChange = canManuallyChangeInventory();
+        for (const id of ["stockProduct", "stockType", "stockQty", "stockCost", "stockRef", "stockNote", "recordStock"]) {
+          $(id).disabled = !canChange;
+        }
+        $("recordStock").title = canChange ? "" : "Owner, Admin, or Manager permission required";
         const map = new Map(inventory.map((r) => [r.product_id, r]));
         const entries = products.map((p) => {
           const r = map.get(p.id) || { qty: 0, avg_cost: 0, reorder_level: 0 };
@@ -110,6 +115,7 @@
         });
       $("recordStock").onclick = () =>
         safe(async () => {
+          if (!canManuallyChangeInventory()) throw Error("Owner, Admin, or Manager permission required");
           const type = $("stockType").value,
             qty = Number($("stockQty").value),
             cost = $("stockCost").value.trim() === "" ? null : Number($("stockCost").value);

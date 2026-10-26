@@ -2,6 +2,7 @@
       let shiftReportTasks = [];
       let shiftTaskItems = [];
       let editingShiftReportId = null;
+      let editingShiftReportCreatorId = null;
       let editingShiftReportStatus = null;
       let unreadShiftAlerts = [];
       let shiftAlertRoles = [];
@@ -56,6 +57,9 @@
         $("shiftTaskItems").querySelectorAll("[data-remove-shift-item]").forEach((button) => {
           button.disabled = editingShiftReportStatus === "submitted";
         });
+        $("submitShiftReport").disabled =
+          editingShiftReportStatus === "submitted" || !canSubmitOwnShiftReport() ||
+          (editingShiftReportId !== null && editingShiftReportCreatorId !== user?.id);
       }
 
       function renderSavedShiftReports() {
@@ -91,6 +95,7 @@
             .order("created_at", { ascending: false }),
         );
         renderSavedShiftReports();
+        renderShiftReportTasks();
       }
 
       function validateShiftReport() {
@@ -147,6 +152,7 @@
               .single(),
           );
           editingShiftReportId = saved.id;
+          editingShiftReportCreatorId = user.id;
         }
         shiftReportTasks = report.tasks;
         editingShiftReportStatus = "draft";
@@ -156,6 +162,7 @@
 
       function resetShiftReport() {
         editingShiftReportId = null;
+        editingShiftReportCreatorId = null;
         editingShiftReportStatus = null;
         shiftReportTasks = [];
         shiftTaskItems = [];
@@ -260,6 +267,9 @@
         });
       $("submitShiftReport").onclick = () =>
         safe(async () => {
+          if (!canSubmitOwnShiftReport()) throw Error("Your role cannot submit shift reports");
+          if (editingShiftReportId !== null && editingShiftReportCreatorId !== user?.id)
+            throw Error("Only your own shift reports may be submitted");
           const report = await saveShiftReportDraft();
           if (!confirm("Submit this shift report and deduct its listed products from inventory?"))
             return;
@@ -293,6 +303,7 @@
               !confirm("Open this report? Changes in the current editor will be lost."))
             return;
           editingShiftReportId = report.id;
+          editingShiftReportCreatorId = report.created_by;
           editingShiftReportStatus = report.status;
           shiftReportTasks = Array.isArray(report.tasks) ? report.tasks : [];
           shiftTaskItems = [];

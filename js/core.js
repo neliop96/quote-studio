@@ -42,6 +42,11 @@
         editProduct = null,
         editCustomer = null,
         editQuote = null;
+      // UI hints only. The database independently enforces these permissions.
+      const canManuallyChangeInventory = () =>
+        ["owner", "admin", "manager"].includes(profile?.role);
+      const canSubmitOwnShiftReport = () =>
+        ["owner", "admin", "manager", "supervisor", "user", "employee"].includes(profile?.role);
       const notify = (s, error = false) => {
         const el = $("message");
         el.style.display = "block";
