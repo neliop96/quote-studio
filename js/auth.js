@@ -34,7 +34,7 @@
       }
       $("saveDefaults").onclick = () =>
         safe(async () => {
-          if (profile?.role !== "admin") throw Error("Admin required to change company defaults");
+          if (!isAdminRole()) throw Error("Admin required to change company defaults");
           const values = {
             markup: Number($("defaultMarkup").value),
             labor_rate: Number($("defaultLaborRate").value),
@@ -78,7 +78,7 @@
       }
       $("saveEstimateNumberSettings").onclick = () =>
         safe(async () => {
-          if (profile?.role !== "admin")
+          if (!isAdminRole())
             throw Error("Admin required to change estimate numbering");
           const prefix = $("estimatePrefix").value.trim().toUpperCase();
           const serialWidth = Number($("estimateSerialWidth").value);
@@ -274,12 +274,17 @@
         $("identity").textContent = `${user.email} · ${profile.role}`;
         document
           .querySelector('[data-tab="team"]')
-          .classList.toggle("hidden", profile.role !== "admin");
-        $("saveProduct").disabled = profile.role !== "admin";
-        $("saveDefaults").disabled = profile.role !== "admin";
-        $("saveEstimateNumberSettings").disabled = profile.role !== "admin";
-        $("estimatePrefix").disabled = profile.role !== "admin";
-        $("estimateSerialWidth").disabled = profile.role !== "admin";
+          .classList.toggle("hidden", !isAdminRole());
+        $("saveProduct").disabled = !isAdminRole();
+        ["defaultMarkup", "defaultLaborRate", "defaultTax", "defaultLaborHours"].forEach(
+          (id) => ($(id).disabled = !isAdminRole()),
+        );
+        $("saveDefaults").disabled = !isAdminRole();
+        $("saveDefaults").classList.toggle("hidden", !isAdminRole());
+        $("saveEstimateNumberSettings").disabled = !isAdminRole();
+        $("saveEstimateNumberSettings").classList.toggle("hidden", !isAdminRole());
+        $("estimatePrefix").disabled = !isAdminRole();
+        $("estimateSerialWidth").disabled = !isAdminRole();
         await refresh();
         await loadQuoteDefaults();
         await loadEstimateNumberSettings();

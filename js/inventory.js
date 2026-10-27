@@ -39,7 +39,7 @@
           visible
             .map(
               ({ p, r, status }) =>
-                `<tr><td>${esc(p.part)}</td><td>${esc(r.qty)}</td><td>${money(r.avg_cost)}</td><td>${money(r.qty * r.avg_cost)}</td><td>${esc(r.reorder_level)}</td><td><span class="stock-status stock-${status}">${labels[status]}</span></td><td>${profile.role === "admin" ? `<button data-reorder="${esc(p.id)}">Set reorder</button>` : ""}</td></tr>`,
+                `<tr><td>${esc(p.part)}</td><td>${esc(r.qty)}</td><td>${money(r.avg_cost)}</td><td>${money(r.qty * r.avg_cost)}</td><td>${esc(r.reorder_level)}</td><td><span class="stock-status stock-${status}">${labels[status]}</span></td><td>${isAdminRole(profile.role) ? `<button data-reorder="${esc(p.id)}">Set reorder</button>` : ""}</td></tr>`,
             )
             .join("") ||
           '<tr><td colspan="7" class="muted">No products match this filter.</td></tr>';
@@ -71,7 +71,7 @@
           shown
             .map(
               (m) =>
-                `<tr><td>${esc(new Date(m.created_at).toLocaleString())}</td><td>${esc(pmap.get(m.product_id) || m.product_id)}</td><td>${esc(m.movement_type)}</td><td>${m.delta > 0 ? "+" : ""}${esc(m.delta)}</td><td>${esc(m.qty_after)}</td><td>${esc(m.reference)}</td><td>${esc(movementActors[String(m.actor)] || (String(m.actor) === String(user?.id) ? profile?.full_name || user?.email : null) || m.actor || "Unknown")}</td><td>${m.archived_at ? "Archived" : "Active"}</td><td>${profile.role === "admin" ? `<button data-movement-id="${esc(m.id)}" data-movement-action="${m.archived_at ? "restore" : "archive"}">${m.archived_at ? "Restore" : "Archive"}</button>` : ""}</td></tr>`,
+                `<tr><td>${esc(new Date(m.created_at).toLocaleString())}</td><td>${esc(pmap.get(m.product_id) || m.product_id)}</td><td>${esc(m.movement_type)}</td><td>${m.delta > 0 ? "+" : ""}${esc(m.delta)}</td><td>${esc(m.qty_after)}</td><td>${esc(m.reference)}</td><td>${esc(movementActors[String(m.actor)] || (String(m.actor) === String(user?.id) ? profile?.full_name || user?.email : null) || m.actor || "Unknown")}</td><td>${m.archived_at ? "Archived" : "Active"}</td><td>${isAdminRole(profile.role) ? `<button data-movement-id="${esc(m.id)}" data-movement-action="${m.archived_at ? "restore" : "archive"}">${m.archived_at ? "Restore" : "Archive"}</button>` : ""}</td></tr>`,
             )
             .join("") ||
           '<tr><td colspan="9" class="muted">No movements match this filter.</td></tr>';
@@ -81,7 +81,7 @@
         safe(async () => {
           const b = e.target.closest("button[data-movement-id]");
           if (!b) return;
-          if (profile?.role !== "admin") throw Error("Admin required");
+          if (!isAdminRole()) throw Error("Admin required");
           const id = b.dataset.movementId,
             action = b.dataset.movementAction;
           if (

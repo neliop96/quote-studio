@@ -98,7 +98,7 @@
           .filter((p) => (p.part + p.description + p.category).toLowerCase().includes(t))
           .map(
             (p) =>
-              `<tr><td>${esc(p.part)}</td><td>${esc(p.category)} / ${esc(p.subcategory)}</td><td>${esc(p.description)}</td><td>${esc(p.supplier)}</td><td>${money(p.price)}</td><td>${profile.role === "admin" ? `<button data-edit-product="${p.id}">Edit</button> <button data-delete-product="${p.id}" class="danger">Archive</button>` : ""}</td></tr>`,
+              `<tr><td>${esc(p.part)}</td><td>${esc(p.category)} / ${esc(p.subcategory)}</td><td>${esc(p.description)}</td><td>${esc(p.supplier)}</td><td>${money(p.price)}</td><td>${isAdminRole(profile.role) ? `<button data-edit-product="${p.id}">Edit</button> <button data-delete-product="${p.id}" class="danger">Archive</button>` : ""}</td></tr>`,
           )
           .join("");
         options(
@@ -168,7 +168,7 @@
       };
       $("saveProduct").onclick = () =>
         safe(async () => {
-          if (profile.role !== "admin") throw Error("Admin required");
+          if (!isAdminRole()) throw Error("Admin required");
           const row = {
             part: $("prodPart").value.trim(),
             category: $("prodCategory").value.trim(),

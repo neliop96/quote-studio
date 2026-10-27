@@ -376,7 +376,7 @@
 
       function renderShiftAlertRoles(selectedRoles = []) {
         const selected = new Set(selectedRoles);
-        const isAdmin = profile?.role === "admin";
+        const isAdmin = isAdminRole();
         $("shiftAlertRoleOptions").innerHTML =
           shiftAlertRoles
             .map(
@@ -385,6 +385,7 @@
             )
             .join("") || '<p class="muted">No employee roles are available yet.</p>';
         $("saveShiftAlertSettings").disabled = !isAdmin;
+        $("saveShiftAlertSettings").classList.toggle("hidden", !isAdmin);
       }
 
       async function loadShiftAlertSettings() {
@@ -399,16 +400,16 @@
         const selectedRoles = Array.isArray(data?.recipient_roles) ? data.recipient_roles : [];
         renderShiftAlertRoles(selectedRoles);
         $("shiftAlertSettingsHelp").textContent =
-          !selectedRoles.length && profile?.role === "admin"
+          !selectedRoles.length && isAdminRole()
             ? "No roles are selected. Choose recipients before submitting any report with handoff notes."
-            : profile?.role === "admin"
+            : isAdminRole()
               ? "Recipients are based on roles currently assigned to employee profiles."
               : "Only an administrator can choose alert recipients.";
       }
 
       $("saveShiftAlertSettings").onclick = () =>
         safe(async () => {
-          if (profile?.role !== "admin") throw Error("Admin required to change alert recipients");
+          if (!isAdminRole()) throw Error("Admin required to change alert recipients");
           const roles = [
             ...$("shiftAlertRoleOptions").querySelectorAll('input[type="checkbox"]:checked'),
           ].map((checkbox) => checkbox.value);

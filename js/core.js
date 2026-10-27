@@ -1,14 +1,56 @@
 
-      // SET THESE TWO VALUES. The publishable/anon key is safe in frontend code when RLS is enabled.
-      // NEVER put a Supabase service_role or secret key here.
-      const SUPABASE_URL = "https://fssyblwhkqfarpbjujsb.supabase.co";
-      const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_1Uvxy8DcztEjPYgojk9-fQ_HEGhUBUZ";
-      const $ = (id) => document.getElementById(id),
-        esc = (s) =>
-          String(s ?? "").replace(
-            /[&<>"']/g,
-            (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
-          );
+      const $ = (id) => document.getElementById(id);
+      const SUPABASE_CONFIG = window.QUOTE_STUDIO_SUPABASE_CONFIG;
+      const PRODUCTION_PROJECT_REF = "fssyblwhkqfarpbjujsb";
+      const validProjectRef = (value) => /^[a-z0-9]{20}$/.test(value);
+      const configError = (message) => {
+        const error = $("message");
+        error.textContent = message;
+        error.style.display = "block";
+        error.style.background = "#702c36";
+        throw Error(message);
+      };
+      if (
+        !SUPABASE_CONFIG ||
+        typeof SUPABASE_CONFIG !== "object" ||
+        Array.isArray(SUPABASE_CONFIG) ||
+        !["production", "staging"].includes(SUPABASE_CONFIG.environment) ||
+        !validProjectRef(SUPABASE_CONFIG.projectRef) ||
+        typeof SUPABASE_CONFIG.url !== "string" ||
+        typeof SUPABASE_CONFIG.publishableKey !== "string" ||
+        !/^sb_publishable_[A-Za-z0-9_-]+$/.test(SUPABASE_CONFIG.publishableKey)
+      )
+        configError("Supabase configuration is missing or malformed. App initialization stopped.");
+      let configuredUrl;
+      try {
+        configuredUrl = new URL(SUPABASE_CONFIG.url);
+      } catch {
+        configError("Supabase configuration URL is malformed. App initialization stopped.");
+      }
+      if (
+        configuredUrl.protocol !== "https:" ||
+        configuredUrl.hostname !== `${SUPABASE_CONFIG.projectRef}.supabase.co` ||
+        configuredUrl.origin !== `https://${SUPABASE_CONFIG.projectRef}.supabase.co` ||
+        configuredUrl.pathname !== "/" ||
+        configuredUrl.search ||
+        configuredUrl.hash ||
+        (SUPABASE_CONFIG.environment === "production" &&
+          SUPABASE_CONFIG.projectRef !== PRODUCTION_PROJECT_REF) ||
+        (SUPABASE_CONFIG.environment === "staging" &&
+          SUPABASE_CONFIG.projectRef === PRODUCTION_PROJECT_REF)
+      )
+        configError(
+          `Supabase ${SUPABASE_CONFIG.environment} configuration does not match its project reference. App initialization stopped.`,
+        );
+      if (!window.supabase?.createClient)
+        configError("Supabase client library is unavailable. App initialization stopped.");
+      const SUPABASE_URL = SUPABASE_CONFIG.url;
+      const SUPABASE_PUBLISHABLE_KEY = SUPABASE_CONFIG.publishableKey;
+      const esc = (s) =>
+        String(s ?? "").replace(
+          /[&<>"']/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+        );
       const money = (n) =>
         Number(n || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
       const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
@@ -42,6 +84,7 @@
         editProduct = null,
         editCustomer = null,
         editQuote = null;
+      const isAdminRole = (role = profile?.role) => ["owner", "admin"].includes(role);
       // UI hints only. The database independently enforces these permissions.
       const canManuallyChangeInventory = () =>
         ["owner", "admin", "manager"].includes(profile?.role);
@@ -88,6 +131,6 @@
           movementActors = Object.fromEntries(
             (actorsResult.data || []).map((r) => [String(r.actor_id), r.display_name]),
           );
-        if (profile?.role === "admin") team = await db.from("profiles").select("*").then(checked);
+        if (isAdminRole()) team = await db.from("profiles").select("*").then(checked);
         renderAll();
       }

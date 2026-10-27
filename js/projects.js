@@ -22,7 +22,7 @@
                 })
                 .join("");
               const canDelete =
-                project.created_by === user?.id || profile?.role === "admin";
+                project.created_by === user?.id || isAdminRole();
               return `<tr><td>${esc(project.name)}</td><td><details><summary>${items.length} products</summary><ul class="project-items">${productList}</ul></details></td><td>${esc(new Date(project.created_at).toLocaleDateString())}</td><td><button data-use-project="${esc(project.id)}">Use in quotation</button>${canDelete ? ` <button class="danger" data-delete-project="${esc(project.id)}">Delete</button>` : ""}</td></tr>`;
             })
             .join("") || '<tr><td colspan="4" class="muted">No shared projects yet.</td></tr>';

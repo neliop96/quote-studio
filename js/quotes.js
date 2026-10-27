@@ -124,7 +124,7 @@
         $("quoteRows").innerHTML = quotes
           .map(
             (q) =>
-              `<tr><td>${esc(q.quote_number)}</td><td>${esc(q.project_name)}</td><td>${esc(q.customer_snapshot?.name)}</td><td>${esc(q.status)}</td><td>${esc(new Date(q.created_at).toLocaleDateString())}</td><td><button data-load-quote="${q.id}">Open</button> <button data-email-quote="${q.id}">Send Email</button>${profile?.role === "admin" ? ` <button class="danger" data-delete-quote="${q.id}">Delete</button>` : ""}</td></tr>`,
+              `<tr><td>${esc(q.quote_number)}</td><td>${esc(q.project_name)}</td><td>${esc(q.customer_snapshot?.name)}</td><td>${esc(q.status)}</td><td>${esc(new Date(q.created_at).toLocaleDateString())}</td><td><button data-load-quote="${q.id}">Open</button> <button data-email-quote="${q.id}">Send Email</button>${isAdminRole() ? ` <button class="danger" data-delete-quote="${q.id}">Delete</button>` : ""}</td></tr>`,
           )
           .join("");
       }
@@ -137,7 +137,7 @@
           }
           const deleteId = e.target.closest("[data-delete-quote]")?.dataset.deleteQuote;
           if (deleteId) {
-            if (profile?.role !== "admin") throw Error("Admin permission required");
+            if (!isAdminRole()) throw Error("Admin permission required");
             const q = quotes.find((x) => x.id === deleteId);
             if (!q) return;
             const answer = prompt(
