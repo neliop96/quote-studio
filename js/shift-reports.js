@@ -6,6 +6,17 @@
       let editingShiftReportStatus = null;
       let unreadShiftAlerts = [];
       let shiftAlertRoles = [];
+      let scheduledShifts = [];
+      let scheduleEmployees = [];
+      let scheduleTimeZone = "America/Los_Angeles";
+      let scheduleToday = "";
+      let scheduleFeatureAvailable = false;
+
+      const shiftDisplayNames = {
+        first: "1st Shift",
+        second: "2nd Shift",
+        third: "3rd Shift",
+      };
 
       const localDate = (date = new Date()) =>
         `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -195,6 +206,10 @@
           .join("");
       $("shiftReportDate").value = localDate();
       $("shiftReportMonth").value = localDate().slice(0, 7);
+      $("myScheduleStartDate").value = localDate();
+      $("myScheduleEndDate").value = localDate(new Date(Date.now() + 14 * 86400000));
+      $("scheduleStartDate").value = localDate();
+      $("scheduleEndDate").value = localDate(new Date(Date.now() + 14 * 86400000));
       renderShiftTaskItems();
       renderShiftReportTasks();
 
@@ -365,6 +380,21 @@
               )
               .join("");
           await loadShiftReports();
+          await loadShiftScheduleSettings();
+          await loadDetectedShift();
+          await loadScheduleRange(
+            $("myScheduleStartDate").value,
+            $("myScheduleEndDate").value,
+            false,
+          );
+        }),
+      );
+      document.querySelector('[data-tab="settings"]').addEventListener("click", () =>
+        safe(async () => {
+          await loadShiftScheduleSettings();
+          if (isAdminRole()) {
+            await loadOfficialSchedule();
+          }
         }),
       );
 
@@ -373,6 +403,351 @@
           .replace(/[_-]+/g, " ")
           .replace(/\b\w/g, (character) => character.toUpperCase());
       }
+
+      function scheduleErrorMessage(error) {
+        const code = String(error?.code || "").toUpperCase();
+        const rawMessage = String(error?.message || "");
+        if (
+          code === "PGRST202" ||
+          code === "42883" ||
+          /function .* does not exist/i.test(rawMessage)
+        )
+          return "Shift scheduling is not installed yet. Ask an administrator to apply the approved migration.";
+        if (error instanceof TypeError || /failed to fetch|network error/i.test(rawMessage))
+          return "Could not reach the scheduling service. Check your connection and try again.";
+        if (code === "42501")
+          return "You do not have permission for this scheduling action.";
+        if (code === "55000")
+          return "Shift scheduling is not ready because its configuration or a previous time-zone cutover is pending.";
+        if (code === "22007")
+          return "That local time is missing or ambiguous during a daylight-saving transition. Choose a different time.";
+        if (code === "22023" || code === "22008")
+          return "The schedule request is invalid. Check the date range and IANA time zone.";
+        if (code === "23P01" || /overlap|conflict/i.test(rawMessage))
+          return "The requested shift conflicts with another scheduled shift. Choose a different time.";
+        return "The scheduling service could not complete the request. Try again or contact an administrator.";
+      }
+
+      async function scheduleRpc(name, args = {}) {
+        let response;
+        try {
+          response = await db.rpc(name, args);
+        } catch (error) {
+          throw Error(scheduleErrorMessage(error));
+        }
+        if (response.error) throw Error(scheduleErrorMessage(response.error));
+        return response.data;
+      }
+
+      function shiftScheduleDateOffset(dateValue, offset) {
+        const date = new Date(`${dateValue}T00:00:00Z`);
+        date.setUTCDate(date.getUTCDate() + offset);
+        return date.toISOString().slice(0, 10);
+      }
+
+      function formatScheduleTime(value, timeZone) {
+        return new Intl.DateTimeFormat(undefined, {
+          timeZone,
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(new Date(value));
+      }
+
+      // Uses absolute instants, so overnight and DST-shifted shifts are exact.
+      function formatShiftDuration(startsAt, endsAt) {
+        const minutes = Math.round((new Date(endsAt) - new Date(startsAt)) / 60000);
+        if (!Number.isFinite(minutes) || minutes < 0) return "—";
+        const hours = Math.floor(minutes / 60);
+        const rest = minutes % 60;
+        if (!hours) return `${rest}m`;
+        return rest ? `${hours}h ${rest}m` : `${hours}h`;
+      }
+
+      // The caller's own assigned shifts only (get_shift_schedule with admin view off).
+      function findMyShifts(shifts, now = new Date()) {
+        const nowMs = new Date(now).getTime();
+        const sorted = (Array.isArray(shifts) ? shifts : [])
+          .map((shift) => ({
+            shift,
+            start: new Date(shift.starts_at).getTime(),
+            end: new Date(shift.ends_at).getTime(),
+          }))
+          .filter((item) => Number.isFinite(item.start) && Number.isFinite(item.end))
+          .sort((a, b) => a.start - b.start);
+        return {
+          current: sorted.find((item) => item.start <= nowMs && nowMs < item.end)?.shift || null,
+          next: sorted.find((item) => item.start > nowMs)?.shift || null,
+        };
+      }
+
+      function describeShift(shift) {
+        const name = shift.kind === "custom" && !/custom/i.test(shift.name) ? `${shift.name} (custom)` : shift.name;
+        return `${name} (${formatScheduleTime(shift.starts_at, shift.time_zone)}–${formatScheduleTime(shift.ends_at, shift.time_zone)})`;
+      }
+
+      async function loadDetectedShift() {
+        const plantEl = $("currentPlantShift");
+        const mineEl = $("myCurrentShift");
+        const nextEl = $("myNextShift");
+        if (!scheduleFeatureAvailable) {
+          plantEl.textContent =
+            "Current plant shift: unavailable until the scheduling migration is applied.";
+          mineEl.textContent = "My current shift: unavailable.";
+          nextEl.textContent = "My next scheduled shift: unavailable.";
+          return;
+        }
+        const plant = await scheduleRpc("get_scheduled_shift_at");
+        plantEl.textContent = plant
+          ? `Current plant shift: ${describeShift(plant)}. This is the official shift active now, regardless of who is assigned.`
+          : "Current plant shift: no official shift is scheduled at this time.";
+
+        const baseDate = scheduleToday || new Date().toISOString().slice(0, 10);
+        const mine = findMyShifts(
+          await scheduleRpc("get_shift_schedule", {
+            p_start_date: shiftScheduleDateOffset(baseDate, -1),
+            p_end_date: shiftScheduleDateOffset(baseDate, 91),
+            p_admin_view: false,
+          }),
+        );
+        mineEl.textContent = mine.current
+          ? `My current shift: ${describeShift(mine.current)}.`
+          : "My current shift: none. You are not assigned to the shift active now.";
+        nextEl.textContent = mine.next
+          ? `My next scheduled shift: ${describeShift(mine.next)}.`
+          : "My next scheduled shift: none assigned in the next 90 days.";
+      }
+
+      function formatLocalClock(value) {
+        const [hour, minute] = value.split(":").map(Number);
+        const period = hour >= 12 ? "PM" : "AM";
+        const displayHour = hour % 12 || 12;
+        return `${displayHour}:${String(minute).padStart(2, "0")} ${period}`;
+      }
+
+      function displayPersonName(person) {
+        return person.full_name?.trim() || "Unnamed employee";
+      }
+
+      async function loadShiftScheduleSettings() {
+        let data;
+        try {
+          data = await scheduleRpc("get_shift_schedule_settings");
+        } catch (error) {
+          scheduleFeatureAvailable = false;
+          const message = error.message || scheduleErrorMessage(error);
+          $("shiftScheduleTimeZoneHelp").textContent = message;
+          $("myScheduleHelp").textContent = message;
+          if (!message.startsWith("Shift scheduling is not installed yet.")) {
+            notify(message, true);
+          }
+          return;
+        }
+        scheduleFeatureAvailable = true;
+        scheduleTimeZone = data.time_zone;
+        scheduleToday = data.today_local;
+        $("shiftScheduleTimeZone").value = data.time_zone;
+        $("shiftTemplateScheduleRows").innerHTML = (data.templates || [])
+          .map((template) => {
+            const days =
+              template.code === "third"
+                ? "Sunday–Thursday"
+                : "Monday–Friday";
+            const endTime = formatLocalClock(template.end_local);
+            const overnight =
+              template.end_local <= template.start_local ? " next day" : "";
+            return `<tr><td>${esc(template.name)}</td><td>${esc(formatLocalClock(template.start_local))}</td><td>${esc(endTime + overnight)}</td><td>${days}</td></tr>`;
+          })
+          .join("");
+        $("shiftScheduleTimeZone").disabled = !isAdminRole();
+        $("saveShiftScheduleTimeZone").disabled = !isAdminRole();
+        $("saveShiftScheduleTimeZone").classList.toggle("hidden", !isAdminRole());
+        $("shiftScheduleTimeZoneHelp").textContent = isAdminRole()
+          ? `IANA time zone changes take effect on ${data.effective_from}. Existing shifts remain unchanged; the system chooses a safe cutover after already-scheduled shifts.`
+          : "Time zone changes are managed by an Owner or Admin.";
+      }
+
+      function renderScheduleEmployees() {
+        const employeeOptions = scheduleEmployees
+          .map(
+            (employee) =>
+              `<option value="${esc(employee.id)}">${esc(displayPersonName(employee))} (${esc(formatRoleName(employee.role))})</option>`,
+          )
+          .join("");
+        $("scheduleEmployeeSelect").innerHTML =
+          '<option value="">Select employee</option>' + employeeOptions;
+        $("overrideEmployeeSelect").innerHTML =
+          '<option value="">Select employee</option>' + employeeOptions;
+        $("scheduleEmployeeRows").innerHTML =
+          scheduleEmployees
+            .map(
+              (employee) =>
+                `<tr><td>${esc(displayPersonName(employee))}</td><td>${esc(formatRoleName(employee.role))}</td><td>${esc(shiftDisplayNames[employee.default_shift] || "Unassigned")}</td></tr>`,
+            )
+            .join("") || '<tr><td colspan="3" class="muted">No eligible employee profiles.</td></tr>';
+      }
+
+      async function loadShiftScheduleAdminData() {
+        if (!isAdminRole()) return;
+        let data;
+        try {
+          data = await scheduleRpc("get_shift_schedule_admin_data");
+        } catch (error) {
+          $("officialScheduleHelp").textContent =
+            "Schedule administration unavailable: " + error.message;
+          return;
+        }
+        scheduleEmployees = Array.isArray(data?.employees) ? data.employees : [];
+        renderScheduleEmployees();
+        $("scheduleDefaultHistoryRows").innerHTML =
+          (data.default_history || [])
+            .map(
+              (entry) =>
+                `<tr><td>${esc(entry.employee_name || "Unknown employee")}</td><td>${esc(shiftDisplayNames[entry.template_code] || "Unassigned")}</td><td>${esc(entry.effective_from)}</td><td>${esc(entry.effective_to || "Current")}</td><td>${esc(entry.changed_by || "System")}</td></tr>`,
+            )
+            .join("") || '<tr><td colspan="5" class="muted">No assignment history yet.</td></tr>';
+        $("scheduleOverrideHistoryRows").innerHTML =
+          (data.override_history || [])
+            .map(
+              (entry) =>
+                `<tr><td>${esc(entry.shift_name)}<br><small>${esc(formatScheduleTime(entry.starts_at, entry.time_zone))}</small></td><td>${esc(entry.employee_name || "Unknown employee")}</td><td>${entry.assigned ? "Assigned" : "Removed"}</td><td>${esc(formatScheduleTime(entry.created_at, entry.time_zone))}</td><td>${esc(entry.changed_by || "Admin")}</td></tr>`,
+            )
+            .join("") || '<tr><td colspan="5" class="muted">No date-specific overrides yet.</td></tr>';
+      }
+
+      async function loadScheduleRange(startDate, endDate, adminView) {
+        if (!scheduleFeatureAvailable) return;
+        if (!startDate || !endDate || endDate < startDate)
+          throw Error("Choose a valid schedule date range");
+        if (adminView && scheduleToday) {
+          const materializeStart =
+            startDate < scheduleToday ? scheduleToday : startDate;
+          const materializeEnd = shiftScheduleDateOffset(scheduleToday, 92);
+          const boundedEnd = endDate > materializeEnd ? materializeEnd : endDate;
+          if (materializeStart <= boundedEnd) {
+            await scheduleRpc("materialize_shift_schedule", {
+              p_start_date: materializeStart,
+              p_end_date: boundedEnd,
+            });
+          }
+        }
+        const data = await scheduleRpc("get_shift_schedule", {
+          p_start_date: startDate,
+          p_end_date: endDate,
+          p_admin_view: adminView,
+        });
+        scheduledShifts = Array.isArray(data) ? data : [];
+        const rows = scheduledShifts
+          .map((shift) => {
+            const assigned = (shift.assignments || [])
+              .map((employee) => esc(displayPersonName(employee)))
+              .join(", ");
+            return `<tr><td>${esc(shift.name)}${shift.kind === "custom" ? " (custom)" : ""}</td><td>${esc(formatScheduleTime(shift.starts_at, shift.time_zone))}</td><td>${esc(formatScheduleTime(shift.ends_at, shift.time_zone))}</td>${adminView ? `<td>${esc(formatShiftDuration(shift.starts_at, shift.ends_at))}</td><td>${assigned || "Unassigned"}</td>` : `<td>${esc(shift.time_zone)}</td>`}${adminView ? "" : ""}</tr>`;
+          })
+          .join("");
+        if (adminView) {
+          $("officialScheduleRows").innerHTML =
+            rows || '<tr><td colspan="5" class="muted">No scheduled shifts in this date range.</td></tr>';
+          $("overrideShiftSelect").innerHTML =
+            '<option value="">Select future shift</option>' +
+            scheduledShifts
+              .filter((shift) => new Date(shift.starts_at) > new Date())
+              .map(
+                (shift) =>
+                  `<option value="${esc(shift.id)}">${esc(shift.name)} · ${esc(formatScheduleTime(shift.starts_at, shift.time_zone))}</option>`,
+              )
+              .join("");
+          $("officialScheduleHelp").textContent =
+            "Only Owner/Admin actions materialize regular shifts. Employee schedule and detection requests are read-only; existing instances are immutable.";
+        } else {
+          $("myScheduleRows").innerHTML =
+            rows || '<tr><td colspan="4" class="muted">No assigned shifts in this range. You may still create a shift report.</td></tr>';
+          $("myScheduleHelp").textContent = `${scheduledShifts.length} assigned shift(s) shown.`;
+        }
+      }
+
+      async function loadOfficialSchedule() {
+        await loadScheduleRange(
+          $("scheduleStartDate").value,
+          $("scheduleEndDate").value,
+          true,
+        );
+        await loadShiftScheduleAdminData();
+      }
+
+      $("loadMySchedule").onclick = () =>
+        safe(() =>
+          loadScheduleRange(
+            $("myScheduleStartDate").value,
+            $("myScheduleEndDate").value,
+            false,
+          ),
+        );
+      $("loadOfficialSchedule").onclick = () =>
+        safe(loadOfficialSchedule);
+      $("saveShiftScheduleTimeZone").onclick = () =>
+        safe(async () => {
+          if (!isAdminRole()) throw Error("Owner or Admin permission required");
+          const timeZone = $("shiftScheduleTimeZone").value.trim();
+          const data = await scheduleRpc("set_shift_schedule_time_zone", {
+            p_time_zone: timeZone,
+          });
+          scheduleTimeZone = data.time_zone;
+          scheduleToday = data.today_local;
+          $("shiftScheduleTimeZone").value = data.time_zone;
+          $("shiftScheduleTimeZoneHelp").textContent =
+            `Saved. Newly generated regular shifts use ${data.time_zone} starting ${data.effective_from}. The cutover is delayed as needed to preserve existing shifts.`;
+          await loadOfficialSchedule();
+          notify("Shift scheduling time zone saved");
+        });
+      $("saveEmployeeDefaultShift").onclick = () =>
+        safe(async () => {
+          if (!isAdminRole()) throw Error("Owner or Admin permission required");
+          const employeeId = $("scheduleEmployeeSelect").value;
+          if (!employeeId) throw Error("Select an employee");
+          await scheduleRpc("set_employee_default_shift", {
+            p_employee_id: employeeId,
+            p_template_code: $("scheduleDefaultShift").value || null,
+          });
+          await loadShiftScheduleAdminData();
+          await loadScheduleRange($("scheduleStartDate").value, $("scheduleEndDate").value, true);
+          notify("Default employee shift assignment saved");
+        });
+      $("scheduleEmployeeSelect").onchange = () => {
+        const selected = scheduleEmployees.find(
+          (employee) => employee.id === $("scheduleEmployeeSelect").value,
+        );
+        $("scheduleDefaultShift").value = selected?.default_shift || "";
+      };
+      $("saveShiftAssignmentOverride").onclick = () =>
+        safe(async () => {
+          if (!isAdminRole()) throw Error("Owner or Admin permission required");
+          const shiftId = $("overrideShiftSelect").value;
+          const employeeId = $("overrideEmployeeSelect").value;
+          if (!shiftId || !employeeId) throw Error("Select a scheduled shift and employee");
+          await scheduleRpc("set_shift_instance_assignment", {
+            p_shift_instance_id: shiftId,
+            p_employee_id: employeeId,
+            p_assigned: $("overrideAssignmentState").value === "true",
+          });
+          await loadOfficialSchedule();
+          notify("Date-specific assignment override saved");
+        });
+      $("createCustomShift").onclick = () =>
+        safe(async () => {
+          if (!isAdminRole()) throw Error("Owner or Admin permission required");
+          const name = $("customShiftName").value.trim();
+          const start = $("customShiftStart").value;
+          const end = $("customShiftEnd").value;
+          if (!name || !start || !end) throw Error("Enter a name and local start/end times");
+          const data = await scheduleRpc("create_custom_shift", {
+            p_name: name,
+            p_start_local: start.replace("T", " "),
+            p_end_local: end.replace("T", " "),
+          });
+          $("customShiftName").value = "";
+          await loadOfficialSchedule();
+          notify(`Custom shift created: ${data}`);
+        });
 
       function renderShiftAlertRoles(selectedRoles = []) {
         const selected = new Set(selectedRoles);

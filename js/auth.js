@@ -263,8 +263,7 @@
         profile = checked(result);
         if (!profile) {
           notify(
-            "Account has no employee profile. Ask the administrator to add your user ID: " +
-              user.id,
+            `Account has no employee profile. Ask the administrator to set up your employee profile (${user.email}).`,
             true,
           );
           await db.auth.signOut();
@@ -272,9 +271,10 @@
         }
         showOnlyAuth("app");
         $("identity").textContent = `${user.email} · ${profile.role}`;
-        document
-          .querySelector('[data-tab="team"]')
-          .classList.toggle("hidden", !isAdminRole());
+        $("accountName").textContent = profile.full_name || "—";
+        $("accountEmail").textContent = user.email || "—";
+        $("accountRole").textContent = profile.role;
+        $("shiftSchedulingAdminPanel").classList.toggle("hidden", !isAdminRole());
         $("saveProduct").disabled = !isAdminRole();
         ["defaultMarkup", "defaultLaborRate", "defaultTax", "defaultLaborHours"].forEach(
           (id) => ($(id).disabled = !isAdminRole()),
@@ -291,6 +291,7 @@
         await loadShiftAlertSettings();
         await loadShiftAlerts();
         await updateMfaStatus();
+        window.restoreNavigation?.();
       }
       // A recovery/invite link authenticates a temporary session; do not show the app until the password is set.
       db.auth.onAuthStateChange((event) => {
@@ -375,14 +376,14 @@
           await db.auth.signOut();
           location.reload();
         });
-      document.querySelectorAll("[data-tab]").forEach(
-        (b) =>
-          (b.onclick = () => {
-            document
-              .querySelectorAll("[data-tab]")
-              .forEach((x) => x.classList.toggle("active", x === b));
-            ["quotes", "shiftReports", "projects", "products", "customers", "inventory", "team", "settings"].forEach((x) =>
-              $(x).classList.toggle("hidden", x !== b.dataset.tab),
-            );
-          }),
-      );
+      $("sendPasswordReset").onclick = () =>
+        safe(async () => {
+          if (!user?.email) throw Error("No account email is available");
+          const redirectTo = new URL("./", window.location.href);
+          redirectTo.searchParams.set("type", "recovery");
+          const { error } = await db.auth.resetPasswordForEmail(user.email, {
+            redirectTo: redirectTo.href,
+          });
+          if (error) throw error;
+          notify("A password reset link has been sent to your account email.");
+        });

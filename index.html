@@ -106,16 +106,37 @@
             ></div
             ><button id="signOut">Sign out</button></div></header
         >
-        <nav class="tabs"
-          ><button data-tab="quotes" class="active">Quotations</button
-          ><button data-tab="shiftReports">Shift Reports</button
-          ><button data-tab="projects">Projects</button
-          ><button data-tab="products">Products</button
-          ><button data-tab="customers">Customers</button
-          ><button data-tab="inventory">Inventory</button><button data-tab="team">Team</button
-          ><button data-tab="settings">Settings</button></nav
+        <nav class="tabs main-nav" aria-label="Main navigation"
+          ><button data-tab="dashboard" data-group="dashboard" class="active">Dashboard</button
+          ><button data-group="sales" data-default="quotes">Projects &amp; Sales</button
+          ><button data-group="catalog" data-default="products">Products &amp; Inventory</button
+          ><button data-tab="customers" data-group="customers">Customers</button
+          ><button data-tab="shiftReports" data-group="shiftReports">Shift Reports</button
+          ><button data-tab="settings" data-group="settings">Settings</button></nav
         >
-        <section id="quotes"
+        <nav class="tabs sub-nav hidden" data-subnav="sales" aria-label="Projects and Sales"
+          ><button data-tab="quotes">Estimates</button
+          ><button data-tab="projects">Project Templates</button></nav
+        >
+        <nav class="tabs sub-nav hidden" data-subnav="catalog" aria-label="Products and Inventory"
+          ><button data-tab="products">Product Catalog</button
+          ><button data-tab="inventory">Inventory</button
+          ><button data-tab="movements">Stock Movements</button></nav
+        >
+        <section id="dashboard"
+          ><div class="panel"
+            ><h2>Dashboard</h2
+            ><p class="muted">Quick overview and shortcuts. Counts reflect data you can access.</p
+            ><div class="grid"
+              ><div><small>Estimates</small><div class="stat" id="dashQuotes">—</div></div
+              ><div><small>Products</small><div class="stat" id="dashProducts">—</div></div
+              ><div><small>Customers</small><div class="stat" id="dashCustomers">—</div></div></div
+            ><div class="actions"
+              ><button data-goto="quotes">Estimates</button
+              ><button data-goto="inventory">Inventory</button
+              ><button data-goto="shiftReports">Shift Reports</button></div></div
+        ></section>
+        <section id="quotes" class="hidden"
           ><div class="panel"
             ><h2>Create quotation</h2
             ><div class="grid"
@@ -308,6 +329,22 @@
         ></section>
         <section id="shiftReports" class="hidden"
           ><div class="panel"
+            ><h2>My scheduled shifts</h2
+            ><p class="muted"
+              >View official shifts assigned to your profile. Employees without an assignment may still create reports.</p
+            ><div
+              ><small id="currentPlantShift" class="muted">Checking the current plant shift…</small
+              ><br /><small id="myCurrentShift" class="muted">Checking my current shift…</small
+              ><br /><small id="myNextShift" class="muted">Checking my next scheduled shift…</small></div
+            ><div class="inventory-controls"
+              ><div><label for="myScheduleStartDate">From</label><input id="myScheduleStartDate" type="date" /></div
+              ><div><label for="myScheduleEndDate">Through</label><input id="myScheduleEndDate" type="date" /></div
+              ><div class="actions"><button id="loadMySchedule">Load my schedule</button></div></div
+            ><div class="scroll"
+              ><table><thead><tr><th>Shift</th><th>Scheduled start</th><th>Scheduled end</th><th>Time zone</th></tr></thead
+              ><tbody id="myScheduleRows"></tbody></table></div
+            ><small id="myScheduleHelp" class="muted"></small></div
+          ><div class="panel"
             ><h2>Create shift report</h2
             ><p class="muted"
               >List each task and the products used. Inventory is deducted only when you submit the report.</p
@@ -483,6 +520,8 @@
             ><div class="actions"
               ><button class="primary" id="recordStock">Record transaction</button></div
             ></div
+        ></section>
+        <section id="movements" class="hidden"
           ><div class="panel"
             ><h2>Recent inventory movements</h2
             ><p class="muted"
@@ -514,7 +553,12 @@
                 ><tbody id="movementRows"></tbody></table></div></div
         ></section>
         <section id="settings" class="hidden"
-          ><div class="panel"
+          ><nav class="tabs sub-nav" data-settings-nav aria-label="Settings sections"
+            ><button data-settings-pane="account" class="active">Account</button
+            ><button data-settings-pane="team">Team Management</button
+            ><button data-settings-pane="scheduling">Shift Scheduling</button
+            ><button data-settings-pane="preferences">Preferences</button></nav
+          ><div class="panel" data-pane="preferences"
             ><h2>Quotation defaults</h2
             ><p class="muted"
               >Saved in Supabase for your team. New quotations use these defaults; existing saved
@@ -535,7 +579,7 @@
             ><div class="actions"
               ><button id="saveDefaults" class="primary">Save defaults (admin)</button></div
             ><small id="settingsHelp" class="muted"></small></div
-          ><div class="panel"
+          ><div class="panel" data-pane="preferences"
             ><h2>Estimate numbering</h2
             ><p class="muted"
               >New estimate numbers are generated in Supabase when saved. They use the prefix,
@@ -551,7 +595,7 @@
             ><div class="actions"
               ><button id="saveEstimateNumberSettings" class="primary">Save estimate numbering (admin)</button></div
             ><small id="estimateNumberHelp" class="muted"></small></div
-          ><div class="panel"
+          ><div class="panel" data-pane="preferences"
             ><h2>Shift handoff alerts</h2
             ><p class="muted"
               >Choose which employee roles receive an alert when a shift report is submitted with handoff notes. Each recipient marks alerts read individually.</p
@@ -559,7 +603,63 @@
             ><div class="actions"
               ><button id="saveShiftAlertSettings" class="primary">Save alert recipients (admin)</button></div
             ><small id="shiftAlertSettingsHelp" class="muted"></small></div
-          ><div class="panel"
+          ><div id="shiftSchedulingAdminPanel" class="panel hidden" data-pane="scheduling"
+            ><h2>Official shift scheduling</h2
+            ><p class="muted"
+              >Regular shifts run Sunday 11 PM through Friday 11 PM. Time-zone changes apply to newly generated shifts starting the next local date; existing shift instances, including future instances, are preserved.</p
+            ><div class="scroll"><table><thead><tr><th>Regular shift</th><th>Start</th><th>End</th><th>Scheduled days</th></tr></thead
+              ><tbody id="shiftTemplateScheduleRows"></tbody></table></div
+            ><div class="grid two"
+              ><div><label for="shiftScheduleTimeZone">Scheduling time zone (IANA)</label
+                ><input id="shiftScheduleTimeZone" value="America/Los_Angeles" placeholder="America/Los_Angeles" /></div
+              ><div class="actions"><button id="saveShiftScheduleTimeZone" class="primary">Save time zone</button></div></div
+            ><small id="shiftScheduleTimeZoneHelp" class="muted"></small>
+            <h3>Default employee assignments</h3
+            ><div class="grid two"
+              ><div><label for="scheduleEmployeeSelect">Employee</label><select id="scheduleEmployeeSelect"></select></div
+              ><div><label for="scheduleDefaultShift">Default shift</label
+                ><select id="scheduleDefaultShift"><option value="">Unassigned</option><option value="first">1st Shift</option><option value="second">2nd Shift</option><option value="third">3rd Shift</option></select></div></div
+            ><div class="actions"><button id="saveEmployeeDefaultShift">Save default assignment</button></div
+            ><div class="scroll"><table><thead><tr><th>Employee</th><th>Role</th><th>Current default</th></tr></thead
+              ><tbody id="scheduleEmployeeRows"></tbody></table></div
+            ><h3>Official shifts and date-specific overrides</h3
+            ><div class="inventory-controls"
+              ><div><label for="scheduleStartDate">From</label><input id="scheduleStartDate" type="date" /></div
+              ><div><label for="scheduleEndDate">Through</label><input id="scheduleEndDate" type="date" /></div
+              ><div class="actions"><button id="loadOfficialSchedule">Load schedule</button></div></div
+            ><div class="scroll"><table><thead><tr><th>Shift</th><th>Start</th><th>End</th><th>Duration</th><th>Assigned employees</th></tr></thead
+              ><tbody id="officialScheduleRows"></tbody></table></div
+            ><div class="grid"
+              ><div><label for="overrideShiftSelect">Scheduled shift</label><select id="overrideShiftSelect"></select></div
+              ><div><label for="overrideEmployeeSelect">Employee</label><select id="overrideEmployeeSelect"></select></div
+              ><div><label for="overrideAssignmentState">Assignment</label
+                ><select id="overrideAssignmentState"><option value="true">Assign</option><option value="false">Remove assignment</option></select></div></div
+            ><div class="actions"><button id="saveShiftAssignmentOverride">Save date-specific override</button></div
+            ><h3>Create custom weekend or other shift</h3
+            ><div class="grid"
+              ><div><label for="customShiftName">Shift name</label><input id="customShiftName" maxlength="80" placeholder="Weekend coverage" /></div
+              ><div><label for="customShiftStart">Local start</label><input id="customShiftStart" type="datetime-local" /></div
+              ><div><label for="customShiftEnd">Local end</label><input id="customShiftEnd" type="datetime-local" /></div></div
+            ><div class="actions"><button id="createCustomShift" class="primary">Create custom shift</button></div
+            ><h3>Assignment history</h3
+            ><div class="scroll"><table><thead><tr><th>Employee</th><th>Default shift</th><th>Effective from</th><th>Effective to</th><th>Changed by</th></tr></thead
+              ><tbody id="scheduleDefaultHistoryRows"></tbody></table></div
+            ><div class="scroll"><table><thead><tr><th>Shift</th><th>Employee</th><th>Override</th><th>Changed</th><th>Changed by</th></tr></thead
+              ><tbody id="scheduleOverrideHistoryRows"></tbody></table></div
+            ><small id="officialScheduleHelp" class="muted"></small></div
+          ><div class="panel" data-pane="account"
+            ><h2>Account</h2
+            ><p class="muted">Signed-in account details.</p
+            ><div class="grid"
+              ><div><small>Name</small><div id="accountName">—</div></div
+              ><div><small>Email</small><div id="accountEmail">—</div></div
+              ><div><small>Role</small><div id="accountRole">—</div></div></div></div
+          ><div class="panel" data-pane="account"
+            ><h2>Password</h2
+            ><p class="muted"
+              >Send a password reset link to your account email. Follow the link to choose a new password.</p
+            ><div class="actions"><button id="sendPasswordReset">Email me a password reset link</button></div></div
+          ><div class="panel" data-pane="account"
             ><h2>Account security — Two-factor authentication</h2
             ><p class="muted"
               >Optional authenticator-app verification (TOTP). Compatible with Google Authenticator,
@@ -608,17 +708,15 @@
                 ></form
               ></div
             ></div
-          ></section
-        ><section id="team" class="hidden"
-          ><div class="panel"
-            ><h2>Employee permissions</h2
+          ><div class="panel" data-pane="team"
+            ><h2>Team management</h2
             ><p class="muted"
-              >Invite employees from Supabase Authentication → Users → Invite user. Then add their
-              user ID to the profiles table as an employee. Only administrators can modify roles.</p
+              >Invite employees from Supabase Authentication → Users → Invite user. Then add them
+              to the profiles table as an employee. Only administrators can modify roles.</p
             ><div class="scroll"
               ><table
                 ><thead
-                  ><tr><th>User ID</th><th>Name</th><th>Role</th></tr></thead
+                  ><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead
                 ><tbody id="teamRows"></tbody></table></div></div
         ></section>
         <p class="foot"
@@ -628,13 +726,14 @@
       ></div
     >
         <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <script defer src="./js/supabase-config.production.js"></script>
+<script defer src="./js/supabase-config.production.js"></script>
     <script defer src="./js/core.js"></script>
     <script defer src="./js/auth.js"></script>
     <script defer src="./js/catalog.js"></script>
     <script defer src="./js/projects.js"></script>
     <script defer src="./js/quotes.js"></script>
     <script defer src="./js/shift-reports.js"></script>
-    <script defer src="./js/inventory.js"></script></body
+    <script defer src="./js/inventory.js"></script>
+    <script defer src="./js/navigation.js"></script></body
   ></html
 >

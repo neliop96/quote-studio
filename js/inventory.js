@@ -51,7 +51,6 @@
           const actorName =
             movementActors[String(m.actor)] ||
             (String(m.actor) === String(user?.id) ? profile?.full_name || user?.email : null) ||
-            m.actor ||
             "";
           return [
             pmap.get(m.product_id),
@@ -71,7 +70,7 @@
           shown
             .map(
               (m) =>
-                `<tr><td>${esc(new Date(m.created_at).toLocaleString())}</td><td>${esc(pmap.get(m.product_id) || m.product_id)}</td><td>${esc(m.movement_type)}</td><td>${m.delta > 0 ? "+" : ""}${esc(m.delta)}</td><td>${esc(m.qty_after)}</td><td>${esc(m.reference)}</td><td>${esc(movementActors[String(m.actor)] || (String(m.actor) === String(user?.id) ? profile?.full_name || user?.email : null) || m.actor || "Unknown")}</td><td>${m.archived_at ? "Archived" : "Active"}</td><td>${isAdminRole(profile.role) ? `<button data-movement-id="${esc(m.id)}" data-movement-action="${m.archived_at ? "restore" : "archive"}">${m.archived_at ? "Restore" : "Archive"}</button>` : ""}</td></tr>`,
+                `<tr><td>${esc(new Date(m.created_at).toLocaleString())}</td><td>${esc(pmap.get(m.product_id) || "Unknown product")}</td><td>${esc(m.movement_type)}</td><td>${m.delta > 0 ? "+" : ""}${esc(m.delta)}</td><td>${esc(m.qty_after)}</td><td>${esc(m.reference)}</td><td>${esc(movementActors[String(m.actor)] || (String(m.actor) === String(user?.id) ? profile?.full_name || user?.email : null) || "Unknown")}</td><td>${m.archived_at ? "Archived" : "Active"}</td><td>${isAdminRole(profile.role) ? `<button data-movement-id="${esc(m.id)}" data-movement-action="${m.archived_at ? "restore" : "archive"}">${m.archived_at ? "Restore" : "Archive"}</button>` : ""}</td></tr>`,
             )
             .join("") ||
           '<tr><td colspan="9" class="muted">No movements match this filter.</td></tr>';

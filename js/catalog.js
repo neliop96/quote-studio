@@ -85,7 +85,7 @@
         $("teamRows").innerHTML = team
           .map(
             (p) =>
-              `<tr><td>${esc(p.id)}</td><td>${esc(p.full_name)}</td><td>${esc(p.role)}</td></tr>`,
+              `<tr><td>${esc(p.full_name || "Unnamed employee")}</td><td>${esc(p.email || (user && p.id === user.id ? user.email : "") || "Not available")}</td><td>${esc(p.role)}</td></tr>`,
           )
           .join("");
       }
