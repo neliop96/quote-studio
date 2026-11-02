@@ -5,6 +5,7 @@
           ["tax", "tax_rate"],
           ["laborHours", "labor_hours"],
         ].forEach(([id, key]) => ($(id).value = quoteDefaults[key]));
+        $("quoteValidity").value = quoteDefaults.validity_days || 30;
         renderLines();
       }
       function renderDefaultInputs() {
@@ -13,14 +14,23 @@
           ["defaultLaborRate", "labor_rate"],
           ["defaultTax", "tax_rate"],
           ["defaultLaborHours", "labor_hours"],
-        ].forEach(([id, key]) => ($(id).value = quoteDefaults[key]));
+          ["defaultValidityDays", "validity_days"],
+        ].forEach(([id, key]) => ($(id).value = quoteDefaults[key] ?? 30));
       }
       async function loadQuoteDefaults() {
-        const { data, error } = await db
+        let { data, error } = await db
           .from("quote_settings")
-          .select("markup,labor_rate,tax_rate,labor_hours")
+          .select("markup,labor_rate,tax_rate,labor_hours,validity_days,quote_time_zone")
           .eq("id", 1)
           .maybeSingle();
+        if (error) {
+          // Before the estimate migration is applied the new columns do not exist.
+          ({ data, error } = await db
+            .from("quote_settings")
+            .select("markup,labor_rate,tax_rate,labor_hours")
+            .eq("id", 1)
+            .maybeSingle());
+        }
         if (error) {
           $("settingsHelp").textContent =
             "Settings unavailable: run the supplied SQL setup in Supabase first.";
@@ -30,6 +40,7 @@
         if (data) quoteDefaults = { ...quoteDefaults, ...data };
         renderDefaultInputs();
         applyQuoteDefaults();
+        if (typeof markQuoteClean === "function") markQuoteClean();
         $("settingsHelp").textContent = "Defaults are stored in Supabase.";
       }
       $("saveDefaults").onclick = () =>
@@ -41,6 +52,9 @@
             tax_rate: Number($("defaultTax").value),
             labor_hours: Number($("defaultLaborHours").value),
           };
+          values.validity_days = EstimateLogic.normalizeValidityDays(
+            $("defaultValidityDays").value.trim() === "" ? NaN : $("defaultValidityDays").value,
+          );
           if (
             Object.entries(values).some(
               ([k, v]) =>
@@ -53,13 +67,14 @@
                       labor_rate: "LaborRate",
                       tax_rate: "Tax",
                       labor_hours: "LaborHours",
+                      validity_days: "ValidityDays",
                     }[k],
                 ).value.trim() === "",
             )
           )
             throw Error("Enter valid nonnegative values");
           checked(await db.from("quote_settings").upsert({ id: 1, ...values }));
-          quoteDefaults = values;
+          quoteDefaults = { ...quoteDefaults, ...values };
           notify("Quotation defaults saved. They will be used for new quotations.");
           $("settingsHelp").textContent = "Saved to Supabase.";
         });

@@ -162,6 +162,7 @@
             $("quoteStatus").value = "Draft";
             $("quoteNotes").value = "";
             applyQuoteDefaults();
+            if (typeof renderQuoteMeta === "function") renderQuoteMeta();
             document.querySelector('[data-tab="quotes"]').click();
             notify(`Project "${project.name}" loaded with current product prices. Adjust its items for this quotation.`);
             return;

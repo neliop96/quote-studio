@@ -110,6 +110,9 @@
         }
       };
       async function refresh() {
+        // Persists server-verified Sent/Expired transitions; older databases lack the RPC.
+        const syncResult = await db.rpc("sync_estimate_statuses");
+        if (syncResult.error) console.warn("Estimate status sync unavailable:", syncResult.error.message);
         [products, customers, quotes, projects, inventory, movements] = await Promise.all([
           db.from("products").select("*").eq("active", true).order("part").then(checked),
           db.from("customers").select("*").order("name").then(checked),

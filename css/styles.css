@@ -389,3 +389,41 @@
         }
       }
     
+
+      .status-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .status-filters button {
+        padding: 6px 12px;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid #354861;
+        background: #17263a;
+        color: #cfe0f7;
+      }
+      .status-ready { background: #1f4b73; border-color: #2b6ca3; }
+      .status-sent { background: #3b3a78; border-color: #5a58b5; }
+      .status-approved { background: #1d5a3a; border-color: #2f8a58; }
+      .status-rejected { background: #6a2a33; border-color: #a24654; }
+      .status-expired { background: #5b4a1f; border-color: #8f7630; }
+      .status-current { background: #17452f; border-color: #2f8a58; }
+      .estimate-banner {
+        margin-top: 12px;
+        padding: 10px 14px;
+        border-radius: 9px;
+        background: #3a3317;
+        border: 1px solid #8f7630;
+        color: #f4e3a5;
+      }
+      .estimate-dates { margin: 10px 0 0; }
+      .row-actions button { margin: 2px 0; padding: 6px 10px; }
+      input[readonly]#quoteStatus { opacity: 0.85; }
+      button:disabled, input:disabled, select:disabled, textarea:disabled { opacity: 0.6; cursor: not-allowed; }

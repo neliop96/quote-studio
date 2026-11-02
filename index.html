@@ -151,13 +151,13 @@
                 ><select id="quoteCustomer"></select></div
               ><div
                 ><label>Status</label
-                ><select id="quoteStatus"
-                  ><option>Draft</option
-                  ><option>Sent</option
-                  ><option>Approved</option
-                  ><option>Rejected</option></select
-                ></div
+                ><input id="quoteStatus" value="Draft" readonly /></div
+              ><div
+                ><label for="quoteValidity">Valid for (days)</label
+                ><input id="quoteValidity" type="number" min="1" max="365" step="1" /></div
               ></div
+            ><div id="quoteIssuedBanner" class="estimate-banner hidden" role="status"></div
+            ><p id="quoteDates" class="muted estimate-dates"></p
             >
             <div class="grid" style="margin-top: 12px"
               ><div
@@ -213,8 +213,8 @@
                 ><div
                   ><label>Quotation format</label
                   ><select id="printFormat"
-                    ><option value="detailed">Detailed quotation (current format)</option
-                    ><option value="customer">Customer quotation (final price only)</option></select
+                    ><option value="detailed">Detailed quotation (internal use only)</option
+                    ><option value="customer" selected>Customer quotation (final price only)</option></select
                   ></div
                 ><div id="customerPrintOptions" class="hidden"
                   ><label>Customer quotation content</label
@@ -238,7 +238,9 @@
               ><div
                 ><button id="printQuote">Print / PDF</button>
                 <button id="saveAsProject">Save as project</button>
-                <button class="primary" id="saveQuote">Save quotation</button>
+                <button id="saveDraft">Save Draft</button>
+                <button class="primary" id="saveQuote">Save &amp; mark Ready</button>
+                <button id="createRevision" class="hidden">Create Revision</button>
                 <button id="clearQuote">New</button></div
               ></div
             ></div
@@ -277,14 +279,22 @@
               ><button id="sendQuoteCancel">Cancel</button></div
             ><small id="sendQuoteInfo" class="muted"></small></div
           ><div class="panel"
-            ><h2>Saved quotations</h2
+            ><h2>Saved Estimates</h2
+            ><div id="quoteStatusFilters" class="status-filters" role="group" aria-label="Filter estimates by status"></div
             ><div class="scroll"
               ><table
                 ><thead
                   ><tr
-                    ><th>Number</th><th>Project</th><th>Customer</th><th>Status</th><th>Date</th><th>Action</th></tr
+                    ><th>Number</th><th>Version</th><th>Project</th><th>Customer</th><th>Status</th><th>Estimate date</th><th>Revision date</th><th>Valid until</th><th>Action</th></tr
                   ></thead
                 ><tbody id="quoteRows"></tbody></table></div></div
+          ><div id="quoteHistoryPanel" class="panel hidden"
+            ><h2 id="quoteHistoryTitle">Status history</h2
+            ><div class="scroll"
+              ><table
+                ><thead><tr><th>When</th><th>From</th><th>To</th><th>Note</th></tr></thead
+                ><tbody id="quoteHistoryRows"></tbody></table></div
+            ><div class="actions"><button id="quoteHistoryClose">Close</button></div></div
         ></section>
         <section id="projects" class="hidden"
                 ><div class="panel"
@@ -575,7 +585,10 @@
                 ><input id="defaultTax" type="number" min="0" step="0.001" /></div
               ><div
                 ><label>Default labor hours</label
-                ><input id="defaultLaborHours" type="number" min="0" step="0.25" /></div></div
+                ><input id="defaultLaborHours" type="number" min="0" step="0.25" /></div
+              ><div
+                ><label>Default quotation validity (days)</label
+                ><input id="defaultValidityDays" type="number" min="1" max="365" step="1" /></div></div
             ><div class="actions"
               ><button id="saveDefaults" class="primary">Save defaults (admin)</button></div
             ><small id="settingsHelp" class="muted"></small></div
@@ -731,6 +744,7 @@
     <script defer src="./js/auth.js"></script>
     <script defer src="./js/catalog.js"></script>
     <script defer src="./js/projects.js"></script>
+    <script defer src="./js/estimates.js"></script>
     <script defer src="./js/quotes.js"></script>
     <script defer src="./js/shift-reports.js"></script>
     <script defer src="./js/inventory.js"></script>
