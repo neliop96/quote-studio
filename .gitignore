@@ -1,1 +1,4 @@
 /js/supabase-config.staging.js
+# Local Supabase Staging configuration
+js/supabase-config.staging.local.js
+supabase/.temp/
