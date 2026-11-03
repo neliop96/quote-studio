@@ -89,6 +89,17 @@ test("CORS headers cover preflight and are attached to OPTIONS and JSON response
   assert.match(handler, /req\.method !== 'POST'/);
 });
 
+test("quotation email checks approval with the caller JWT before using service-role access", () => {
+  const handler = indexSource.slice(indexSource.indexOf("Deno.serve("));
+  const approvalCheck = handler.indexOf("approvalCheck.rpc('is_account_approved')");
+  const serviceClient = handler.indexOf("createClient(SUPABASE_URL, SERVICE_KEY");
+  assert.ok(approvalCheck >= 0);
+  assert.ok(serviceClient > approvalCheck);
+  assert.match(handler, /if \(approvalError\)[\s\S]*respond\(500/);
+  assert.match(handler, /if \(approved !== true\) return respond\(403/);
+  assert.match(handler, /global: \{ headers: \{ Authorization:/);
+});
+
 test("CORS still uses configured origins when another required setting is invalid", () => {
   const brokenConfig = L.parseConfig({
     QUOTATION_ALLOWED_ORIGINS: "https://neliop96.github.io,http://127.0.0.1:4173",

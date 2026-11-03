@@ -1,8 +1,9 @@
 # Quote Studio staging baseline
 
-Local preparation only. No database SQL has been executed. Execution requires
-separate approval and a verified target of bzejwackkozoqqrxfnrz. Never apply this
-baseline to the existing production database.
+The baseline remains local preparation only; it has not been executed. The
+TRUNCATE privilege revocation migration was separately applied manually in
+staging. SQL Editor execution does not automatically create a Supabase migration
+history entry. Never apply this baseline to the existing production database.
 
 ## Provenance and scope
 
@@ -34,7 +35,7 @@ employee, not a new role-management design.
 - PostgreSQL 17 or newer for the audited MAINTAIN grants. The exact production
   version was not queried; this is a syntax compatibility requirement.
 - Migration executor is postgres with CREATE privileges and ability to set owners
-  and postgres default ACLs. Apply all seven files using the same executor.
+   and postgres default ACLs. Apply the first seven files using the same executor.
 - Public application schema empty; the baseline intentionally fails on existing
   relations or non-extension routines. Private inventory schema must be absent.
 - Keep staging isolated from real users and integrations while broad grants remain.
@@ -44,9 +45,11 @@ employee, not a new role-management design.
 
 Managed auth schema/function definitions, platform roles/memberships, database
 ACLs, public schema ownership, and supabase_admin default ACLs are platform
-prerequisites, not recreated. The migration restores application grants and
-audited postgres defaults in public; it does not change global default ACLs.
-Unusual pre-existing global grants require review during staging validation.
+prerequisites, not recreated. The baseline restores audited postgres defaults in
+public but does not change global defaults. The proposed function permission
+migration changes ACLs only on the 15 existing application functions and leaves
+future-function defaults unchanged. See STAGING_PRIVILEGE_REVIEW.md for the
+unresolved default-privilege risk and separately reviewed options.
 
 ## Exact migration order
 
@@ -57,12 +60,22 @@ Unusual pre-existing global grants require review during staging validation.
 5. 20261023163000_add_shift_reports.sql
 6. 20261023164000_add_shift_handoff_alerts.sql
 7. 20261025150000_secure_inventory_workflows.sql
+8. 20261025230000_revoke_unsafe_truncate_privileges.sql
+9. 20261025233000_harden_function_execute_privileges.sql (local proposal; not applied)
+10. 20261025234000_protect_profile_role_management.sql (local proposal; not applied)
 
-Apply once in order with a migration runner that stops on errors and records each
-version. Do not rerun completed CREATE TABLE migrations or insert guessed history.
-Baseline and security patch contain their own transaction boundaries; verify the
-runner supports these. Intermediate versions retain the old stock writer, so
-do not allow application traffic until the entire chain succeeds.
+Apply the first seven migrations once in order with a runner that stops on errors
+and records each version. The final TRUNCATE revocation migration was instead
+manually applied in staging through SQL Editor; this did not automatically record
+a Supabase migration history entry. Verification confirmed all 14 public tables return false for
+TRUNCATE privileges for both anon and authenticated. Do not rerun completed CREATE
+TABLE migrations or insert guessed history. Baseline and security patch contain
+their own transaction boundaries; verify the runner supports these. Intermediate
+versions retain the old stock writer, so do not allow application traffic until
+the entire chain succeeds. The function-permission proposal is not approved or
+applied; review its default-ACL scope before deciding whether to use it. The
+profile/role security proposal is also local and unapproved; review
+PROFILE_ROLE_SECURITY_REVIEW.md before any staging application.
 
 ## Synthetic setup, only after approved migrations
 
@@ -131,5 +144,6 @@ here. Git whitespace validation passed. Existing six migration files and fronten
 files were not changed by this preparation.
 
 No PostgreSQL parser/server, psql, Docker, or Node was available on PATH for
-runtime validation. No SQL was executed locally or remotely. The baseline is
-prepared for an approved isolated staging test, not certified as runtime-tested.
+runtime validation. No SQL was executed locally. The baseline is prepared for an
+approved isolated staging test, not certified as runtime-tested; the separately
+applied staging TRUNCATE revocation is documented above.

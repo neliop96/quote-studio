@@ -84,8 +84,18 @@
         renderInventory();
         $("teamRows").innerHTML = team
           .map(
-            (p) =>
-              `<tr><td>${esc(p.full_name || "Unnamed employee")}</td><td>${esc(p.email || (user && p.id === user.id ? user.email : "") || "Not available")}</td><td>${esc(p.role)}</td></tr>`,
+            (account) => {
+              const status = account.approved
+                ? "Approved"
+                : account.revoked_at
+                  ? "Revoked"
+                  : "Pending";
+              const action =
+                account.user_id === user?.id
+                  ? ""
+                  : `<button type="button" data-account-action="${account.approved ? "revoke" : "approve"}" data-user-id="${esc(account.user_id)}">${account.approved ? "Revoke access" : "Approve access"}</button>`;
+              return `<tr><td>${esc(account.full_name || "Unnamed employee")}</td><td>${esc(account.email || "Not available")}</td><td>${esc(account.role)}</td><td>${status}</td><td>${action}</td></tr>`;
+            },
           )
           .join("");
       }

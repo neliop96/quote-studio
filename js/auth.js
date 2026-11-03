@@ -115,7 +115,7 @@
       let pendingMfaFactor = null,
         pendingEnrollFactor = null;
       function showOnlyAuth(id) {
-        ["login", "forgotPanel", "mfaLogin", "passwordSetup", "app"].forEach((x) =>
+        ["login", "forgotPanel", "mfaLogin", "passwordSetup", "pendingApproval", "app"].forEach((x) =>
           $(x).classList.toggle("hidden", x !== id),
         );
         $("authBrand").classList.toggle("hidden", id === "app");
@@ -284,6 +284,12 @@
           await db.auth.signOut();
           return;
         }
+        const approvalResult = await db.rpc("is_account_approved");
+        if (approvalResult.error) throw approvalResult.error;
+        if (approvalResult.data !== true) {
+          showOnlyAuth("pendingApproval");
+          return;
+        }
         showOnlyAuth("app");
         $("identity").textContent = `${user.email} · ${profile.role}`;
         $("accountName").textContent = profile.full_name || "—";
@@ -386,6 +392,43 @@
           );
           await loadSession();
         });
+      $("pendingSignOut").onclick = () =>
+        safe(async () => {
+          checked(await db.auth.signOut());
+          user = null;
+          profile = null;
+          showOnlyAuth("login");
+        });
+      $("teamRows").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-account-action]");
+        if (!button) return;
+        safe(async () => {
+          const reason = window.prompt(
+            button.dataset.accountAction === "approve"
+              ? "Reason for approving this account (recorded in the audit trail):"
+              : "Reason for revoking this account (recorded in the audit trail):",
+          );
+          if (reason === null) return;
+          if (reason.trim().length < 8)
+            throw Error("Enter an audit reason of at least 8 characters");
+          const rpc =
+            button.dataset.accountAction === "approve"
+              ? "approve_account_access"
+              : "revoke_account_access";
+          checked(
+            await db.rpc(rpc, {
+              p_user_id: button.dataset.userId,
+              p_reason: reason.trim(),
+            }),
+          );
+          await refresh();
+          notify(
+            button.dataset.accountAction === "approve"
+              ? "Account access approved"
+              : "Account access revoked",
+          );
+        });
+      });
       $("signOut").onclick = () =>
         safe(async () => {
           await db.auth.signOut();

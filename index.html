@@ -83,6 +83,15 @@
           link.</p
         ></div
       >
+      <div id="pendingApproval" class="panel compact hidden"
+        ><h1>Access awaiting approval</h1
+        ><p class="muted"
+          >Your invited account is not yet approved for Quote Studio business data. Contact an
+          administrator after completing your password setup.</p
+        ><div class="actions"
+          ><button id="pendingSignOut" type="button">Sign out</button></div
+        ></div
+      >
       <div id="app" class="hidden"
         ><header
           style="
@@ -724,12 +733,13 @@
           ><div class="panel" data-pane="team"
             ><h2>Team management</h2
             ><p class="muted"
-              >Invite employees from Supabase Authentication → Users → Invite user. Then add them
-              to the profiles table as an employee. Only administrators can modify roles.</p
+              >Invite employees from Supabase Authentication → Users → Invite user. New accounts
+              remain blocked from business data until approved here. Approval is separate from
+              profile roles; only an owner may approve or revoke an owner or administrator.</p
             ><div class="scroll"
               ><table
                 ><thead
-                  ><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead
+                  ><tr><th>Name</th><th>Email</th><th>Role</th><th>Account access</th><th>Action</th></tr></thead
                 ><tbody id="teamRows"></tbody></table></div></div
         ></section>
         <p class="foot"

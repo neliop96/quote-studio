@@ -134,6 +134,6 @@
           movementActors = Object.fromEntries(
             (actorsResult.data || []).map((r) => [String(r.actor_id), r.display_name]),
           );
-        if (isAdminRole()) team = await db.from("profiles").select("*").then(checked);
+        if (isAdminRole()) team = await db.rpc("list_account_approvals").then(checked);
         renderAll();
       }

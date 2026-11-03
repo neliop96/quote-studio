@@ -269,6 +269,17 @@ Deno.serve(async (req: Request) => {
     const { data: { user }, error: userError } = await auth.auth.getUser(jwt);
     if (userError || !user) return respond(401, { error: 'Invalid session' });
 
+    const approvalCheck = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+      auth: { persistSession: false },
+    });
+    const { data: approved, error: approvalError } = await approvalCheck.rpc('is_account_approved');
+    if (approvalError) {
+      console.error('Account approval check failed:', approvalError.message);
+      return respond(500, { error: 'Unable to verify account approval' });
+    }
+    if (approved !== true) return respond(403, { error: 'Account approval required' });
+
     const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
     const { data: profile, error: profileError } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle();
     if (profileError) {

@@ -8,7 +8,7 @@ See STAGING_BASELINE.md for provenance, synthetic setup, and limitations, and
 STAGING_PRIVILEGE_REVIEW.md for proposed hardening. Do not apply this fresh-schema
 baseline to production. Staging execution requires separate approval.
 
-## Exact staging migration order (all pending execution)
+## Exact staging migration order and current status
 
 1. `20261023155000_original_application_baseline.sql`
 2. `20261023160000_add_project_name_to_quotes.sql`
@@ -17,10 +17,18 @@ baseline to production. Staging execution requires separate approval.
 5. `20261023163000_add_shift_reports.sql`
 6. `20261023164000_add_shift_handoff_alerts.sql`
 7. `20261025150000_secure_inventory_workflows.sql`
+8. `20261025230000_revoke_unsafe_truncate_privileges.sql` (manually applied in
+  staging through SQL Editor; no migration history entry was automatically added)
+9. `20261025233000_harden_function_execute_privileges.sql` (local proposal only;
+  not applied)
+10. `20261025234000_protect_profile_role_management.sql` (local proposal only;
+   not applied; see PROFILE_ROLE_SECURITY_REVIEW.md)
 
-Run once, as postgres, against the verified empty staging project only after
-separate approval. Require PostgreSQL 17+ for audited MAINTAIN grants and standard
-Supabase auth/roles. Keep traffic disabled until all seven migrations succeed.
+The original seven-file chain requires separate approval before execution. The
+TRUNCATE migration is already applied in staging and must not be rerun blindly.
+The function-permission migration is a local proposal awaiting approval. Require
+PostgreSQL 17+ for audited MAINTAIN grants and standard Supabase auth/roles. Keep
+traffic disabled until the approved chain is validated.
 
 ## Baseline validation checklist (not yet executed)
 
@@ -28,19 +36,23 @@ Supabase auth/roles. Keep traffic disabled until all seven migrations succeed.
   staging project configuration.
 - [ ] Confirm executor, database version, CREATE privilege, empty app schema,
   auth.users/auth.uid(), UUID generation, and absence of the private schema.
-- [ ] Apply all seven migrations; verify migration history and stop on first error.
+- [ ] Verify migration history for the original seven-file chain; SQL Editor
+  execution of the TRUNCATE migration does not automatically record a history row.
 - [ ] Rebuild a second disposable database from scratch using the same files.
-- [ ] Compare resulting metadata: 14 public tables, 100 columns, 56 constraints,
-  20 indexes, 1 public identity sequence, 26 policies, 15 public functions,
-  1 handoff trigger, plus the private helper introduced by the final patch.
+  - [ ] Compare resulting metadata: 14 public tables, 100 columns, 56 constraints,
+  20 indexes, 1 public identity sequence, 26 policies, 17 public functions,
+  2 application triggers (handoff and profile guard), plus the private helper
+  introduced by the inventory patch.
 - [ ] Compare column types/defaults/nullability, FK delete actions, UUID defaults,
   unique part/quote numbers, check constraints, and archive fields with audit.
 - [ ] Verify quotation_email_log identity is ALWAYS, starts at 1, increments by 1,
   has bigint bounds/cache 1/no cycle, and is owned by its id column; quote_id has
   an index but no invented FK. No email-log records copied.
 - [ ] Verify all table RLS enabled/not forced, postgres application ownership,
-  routine search_path/security/volatility, and actual ACL/default-ACL inheritance.
-  Expected broad privileges are documented risks, not a security-test pass.
+  routine search_path/security/volatility, effective ACLs for all 15 application
+  functions, and current global/public function default ACLs for each creator
+  role. The proposed function migration leaves defaults unchanged; expected broad
+  privileges and future-function defaults are documented risks, not a security pass.
 - [ ] Confirm no auth.users provisioning trigger; bootstrap synthetic admin and
   employee profiles explicitly following STAGING_BASELINE.md, with no real users.
 - [ ] Initialize synthetic settings/products/customer/stock through the documented
@@ -48,9 +60,9 @@ Supabase auth/roles. Keep traffic disabled until all seven migrations succeed.
 - [ ] Test admin/employee login, catalog CRUD, customer access, quote snapshots,
   unique numbering/concurrency, shared project permissions, admin quote deletion,
   movement actor names, reorder, archive/restore, and FK failures.
-- [ ] Verify employee cannot manage profiles; admin behavior and admin/employee
-  quote-default access remain compatible. Missing-profile/anonymous access must
-  match each captured policy, not an assumed global profile requirement.
+- [ ] After separately approving the profile migration, verify role changes are
+  restricted to the owner/admin workflows in PROFILE_ROLE_SECURITY_REVIEW.md.
+  Preserve legacy employee quote-default and shift-submission access.
 - [ ] Confirm staging frontend isolation before browser tests; no production
   URL/key, live mail integration, production contacts, or copied credentials.
 - [ ] Test email-log table/sequence ACLs with synthetic data only if separately
