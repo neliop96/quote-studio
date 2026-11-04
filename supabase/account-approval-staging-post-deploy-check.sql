@@ -46,6 +46,7 @@ guarded_functions AS (
     AND routine.prorettype <> 'trigger'::regtype
     AND routine.oid <> to_regprocedure('public.is_admin()')
     AND routine.oid <> to_regprocedure('public.is_account_approved()')
+    AND routine.oid IS DISTINCT FROM to_regprocedure('public.list_account_approval_audit(integer,bigint)')
     AND pg_catalog.has_function_privilege('authenticated', routine.oid, 'EXECUTE')
 ),
 checks AS (
@@ -125,6 +126,48 @@ checks AS (
     ) THEN 'PASS' ELSE 'FAIL' END,
     format('Guarded targets found: %s.', count(*))
   FROM guarded_functions
+  UNION ALL
+  SELECT
+    'Owner-only audit RPC has exact identity, guards and privileges',
+    CASE WHEN
+      (SELECT count(*) FROM pg_catalog.pg_proc AS audit_fn
+        JOIN pg_catalog.pg_namespace AS audit_ns ON audit_ns.oid = audit_fn.pronamespace
+        WHERE audit_ns.nspname = 'public' AND audit_fn.proname = 'list_account_approval_audit') = 1
+      AND EXISTS (
+        SELECT 1 FROM pg_catalog.pg_proc AS audit_fn
+        WHERE audit_fn.oid = to_regprocedure('public.list_account_approval_audit(integer,bigint)')
+          AND audit_fn.prokind = 'f' AND audit_fn.prosecdef
+          AND audit_fn.proowner = to_regrole('postgres')
+          AND audit_fn.proconfig @> ARRAY['search_path=""']
+          AND audit_fn.prosrc LIKE '%quote_studio_account_private.require_account_approved()%'
+          AND audit_fn.prosrc LIKE '%caller.role = ''owner''%'
+          AND audit_fn.prosrc LIKE '%least(p_limit, 200)%')
+      AND pg_catalog.has_function_privilege('authenticated', 'public.list_account_approval_audit(integer,bigint)', 'EXECUTE')
+      AND NOT pg_catalog.has_function_privilege('anon', 'public.list_account_approval_audit(integer,bigint)', 'EXECUTE')
+      AND NOT pg_catalog.has_function_privilege('service_role', 'public.list_account_approval_audit(integer,bigint)', 'EXECUTE')
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_catalog.pg_proc AS audit_fn,
+          LATERAL aclexplode(coalesce(audit_fn.proacl, acldefault('f', audit_fn.proowner))) AS acl
+        WHERE audit_fn.oid = to_regprocedure('public.list_account_approval_audit(integer,bigint)')
+          AND acl.grantee = 0)
+    THEN 'PASS' ELSE 'FAIL' END,
+    'public.list_account_approval_audit(integer,bigint); authenticated only.'
+  UNION ALL
+  SELECT
+    'Audit table is append-only (ENABLE ALWAYS triggers) and not directly granted',
+    CASE WHEN (
+      SELECT count(*) FROM pg_catalog.pg_trigger AS audit_trigger
+      WHERE audit_trigger.tgrelid = to_regclass('quote_studio_account_private.account_approval_audit')
+        AND NOT audit_trigger.tgisinternal AND audit_trigger.tgenabled = 'A'
+        AND audit_trigger.tgname IN ('account_approval_audit_no_row_change', 'account_approval_audit_no_truncate')
+    ) = 2
+    AND NOT EXISTS (
+      SELECT 1 FROM (VALUES ('anon'), ('authenticated'), ('service_role')) AS app_role(role_name)
+      WHERE pg_catalog.has_table_privilege(app_role.role_name,
+        'quote_studio_account_private.account_approval_audit',
+        'SELECT, INSERT, UPDATE, DELETE, TRUNCATE'))
+    THEN 'PASS' ELSE 'FAIL' END,
+    'Triggers block UPDATE, DELETE and TRUNCATE; privileged owners can still bypass them.'
   UNION ALL
   SELECT
     'is_admin requires approved owner or admin',

@@ -19,6 +19,7 @@ const FRONTEND_FILES = new Map([
   ["/js/core.js", "js/core.js"],
   ["/js/auth.js", "js/auth.js"],
   ["/js/catalog.js", "js/catalog.js"],
+  ["/js/approval-audit.js", "js/approval-audit.js"],
   ["/js/projects.js", "js/projects.js"],
   ["/js/estimates.js", "js/estimates.js"],
   ["/js/quotes.js", "js/quotes.js"],

@@ -740,7 +740,22 @@
               ><table
                 ><thead
                   ><tr><th>Name</th><th>Email</th><th>Role</th><th>Account access</th><th>Action</th></tr></thead
-                ><tbody id="teamRows"></tbody></table></div></div
+                ><tbody id="teamRows"></tbody></table></div
+            ><div id="approvalAuditPanel" class="hidden"
+              ><h2>Account approval audit history</h2
+              ><p class="muted"
+                >Owner only. Newest events first. Only completed events are recorded; failed
+                attempts are not logged.</p
+              ><p id="approvalAuditStatus" class="muted" role="status"></p
+              ><div class="scroll"
+                ><table
+                  ><thead
+                    ><tr><th>Date and time</th><th>Action</th><th>Account</th><th>Actor</th><th>Reason</th><th>Result</th></tr></thead
+                  ><tbody id="approvalAuditRows"></tbody></table></div
+              ><div class="actions"
+                ><button type="button" id="approvalAuditMore" class="hidden">Load more</button
+                ><button type="button" id="approvalAuditRefresh">Refresh</button></div
+            ></div></div
         ></section>
         <p class="foot"
           >Shared cloud database · Inventory writes are atomic · Keep independent backups · Confirm
@@ -753,6 +768,7 @@
     <script defer src="./js/core.js"></script>
     <script defer src="./js/auth.js"></script>
     <script defer src="./js/catalog.js"></script>
+    <script defer src="./js/approval-audit.js"></script>
     <script defer src="./js/projects.js"></script>
     <script defer src="./js/estimates.js"></script>
     <script defer src="./js/quotes.js"></script>

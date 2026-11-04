@@ -152,6 +152,11 @@
       .hidden {
         display: none !important;
       }
+      .audit-reason {
+        min-width: 16rem;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
       .scroll {
         overflow-x: auto;
       }

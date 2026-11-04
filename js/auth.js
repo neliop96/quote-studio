@@ -307,6 +307,7 @@
         $("estimatePrefix").disabled = !isAdminRole();
         $("estimateSerialWidth").disabled = !isAdminRole();
         await refresh();
+        initApprovalAudit();
         await loadQuoteDefaults();
         await loadEstimateNumberSettings();
         await loadShiftAlertSettings();
@@ -422,6 +423,7 @@
             }),
           );
           await refresh();
+          refreshApprovalAudit();
           notify(
             button.dataset.accountAction === "approve"
               ? "Account access approved"
